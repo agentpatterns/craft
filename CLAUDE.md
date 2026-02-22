@@ -18,7 +18,7 @@ Each skill is a directory containing `SKILL.md` (with YAML frontmatter for name,
 
 ```
 # From GitHub
-/plugin marketplace add ericjohnolson/craft
+/plugin marketplace add agentpatterns/craft
 /plugin install crafter
 
 # From local directory

@@ -13,7 +13,7 @@ This plugin offers curated skills that guide Claude through proven software deve
 In Claude Code, add the marketplace and install the plugin:
 
 ```
-/plugin marketplace add ericjohnolson/craft
+/plugin marketplace add agentpatterns/craft
 /plugin install crafter
 ```
 
@@ -21,7 +21,7 @@ In Claude Code, add the marketplace and install the plugin:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/ericjohnolson/craft
+   git clone https://github.com/agentpatterns/craft
    ```
 
 2. In Claude Code, add the marketplace and install:
