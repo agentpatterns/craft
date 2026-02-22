@@ -19,6 +19,7 @@ For each ready issue from `beads:ready`:
 
 **Purpose:** Create failing tests for the current phase.
 **Agent type:** `general-purpose` (subagent_type)
+**Model:** `sonnet`
 **Mode:** Synchronous (not background)
 
 Prompt template — substitute `{issue_description}` with the full beads issue description:
@@ -37,6 +38,7 @@ IMPORTANT: If tests pass immediately, something is wrong. Report this as a RED g
 
 **Purpose:** Write minimal code to make tests pass.
 **Agent type:** `general-purpose` (subagent_type)
+**Model:** `sonnet`
 **Mode:** Synchronous (not background)
 
 ```
@@ -53,6 +55,7 @@ IMPORTANT: Do NOT modify test files. If a test seems wrong, report it and let a 
 
 **Purpose:** Run the full test suite to ensure nothing is broken.
 **Agent type:** `general-purpose` (subagent_type)
+**Model:** `haiku`
 **Mode:** Synchronous (not background)
 
 ```
@@ -69,6 +72,7 @@ IMPORTANT: Do NOT fix anything. Only report.
 
 **Purpose:** Execute non-TDD phase tasks (schema, infrastructure).
 **Agent type:** `general-purpose` (subagent_type)
+**Model:** `sonnet`
 **Mode:** Synchronous (not background)
 
 ```
@@ -83,6 +87,7 @@ YOUR ROLE: Execute the task as described. Verify the acceptance gate.
 
 **Purpose:** Fix implementation after validation finds failures.
 **Agent type:** `general-purpose` (subagent_type)
+**Model:** `opus`
 **Mode:** Synchronous (not background)
 
 ```
@@ -119,8 +124,8 @@ If `beads:ready` returns issues #5 (no-test setup) and #8 (write tests for indep
 
 ```
 # Single message with two Task calls:
-Task(description="P1: Apply Schema", subagent_type="general-purpose", prompt="...")
-Task(description="P3: Write Tests — Repository", subagent_type="general-purpose", prompt="...")
+Task(description="P1: Apply Schema", subagent_type="general-purpose", model="sonnet", prompt="...")
+Task(description="P3: Write Tests — Repository", subagent_type="general-purpose", model="sonnet", prompt="...")
 ```
 
 ---

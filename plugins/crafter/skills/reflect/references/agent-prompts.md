@@ -5,6 +5,7 @@ Dispatch all four agents in a **single message** with `run_in_background: true` 
 ## Agent 1: Git Historian
 
 **Type:** `Explore`
+**Model:** `haiku`
 
 ```
 You are the Git Historian agent for a post-session reflection.
@@ -30,6 +31,7 @@ Keep your report under 60 lines. Focus on facts, not interpretation.
 ## Agent 2: Artifact Scout
 
 **Type:** `Explore`
+**Model:** `haiku`
 
 ```
 You are the Artifact Scout agent for a post-session reflection.
@@ -55,6 +57,7 @@ Keep your report under 50 lines.
 ## Agent 3: Context Reader
 
 **Type:** `Explore`
+**Model:** `haiku`
 
 ```
 You are the Context Reader agent for a post-session reflection.
@@ -80,6 +83,7 @@ Keep your report under 50 lines.
 ## Agent 4: Skill Inspector
 
 **Type:** `Explore`
+**Model:** `haiku`
 
 ```
 You are the Skill Inspector agent for a post-session reflection.
