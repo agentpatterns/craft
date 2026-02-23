@@ -66,3 +66,16 @@ The crafter plugin's core workflow for non-trivial features:
 1. **Research** (`/research`) — Explore the codebase with parallel subagents, output a compact research artifact
 2. **Draft** (`/draft`) — Consume the research artifact, produce a compact implementation plan with test specs
 3. **Craft** (`/craft`) — Execute the plan phase by phase with strict RED → GREEN → REFACTOR discipline
+
+## Changelog
+
+### 2.2.1
+
+**Draft skill:**
+- Fixed beads availability probe to use `beads:search` instead of `beads:epic` (consistent with craft skill)
+- Expanded inline task graph fallback example to show complete TDD triplet (Write Tests → Implement → Validate) with correct `blocked-by` dependency chain
+
+**Craft skill:**
+- Added explicit VALIDATE gate definition: `tsc --noEmit && vitest run && biome check .`
+- Added lint fast path: auto-fix biome-only failures via `biome check --write --unsafe` instead of creating heavyweight remediation issues
+- Added anti-pattern: "Don't treat a biome-only VALIDATE failure as a full remediation event"

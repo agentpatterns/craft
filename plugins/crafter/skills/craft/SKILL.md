@@ -165,6 +165,21 @@ If Agent 1's tests pass immediately (before implementation):
 2. Report to user — explain what happened
 3. Do NOT close the issue — leave it open for user decision
 
+### VALIDATE Gate Definition
+
+The VALIDATE gate is: `tsc --noEmit && vitest run && biome check .` — all three commands must exit 0. Agent 3 runs this gate and reports the result.
+
+### Lint Fast Path
+
+If VALIDATE fails **only on biome** (tests pass, tsc clean), apply the lint fast path instead of creating remediation issues:
+
+1. Run `biome check --write --unsafe` to auto-fix lint issues
+2. Re-run the full VALIDATE gate (`tsc --noEmit && vitest run && biome check .`)
+3. If gate passes → close the Validate issue and proceed
+4. If gate still fails → fall through to standard remediation
+
+This avoids heavyweight remediation for trivially auto-fixable lint issues.
+
 ### If GREEN Gate Fails
 
 If Agent 2 cannot make tests pass:
@@ -190,6 +205,7 @@ No special recovery logic needed. The beads state *is* the execution state.
 - **Don't read the plan file during execution** — beads issues are self-contained
 - **Don't improvise beyond the plan** — stick to the beads issues or update them explicitly
 - **Don't run agents in background** — synchronous dispatch ensures ordering
+- **Don't treat a biome-only VALIDATE failure as a full remediation event** — use the lint fast path (`biome check --write --unsafe`) instead
 
 ## After Implementation
 

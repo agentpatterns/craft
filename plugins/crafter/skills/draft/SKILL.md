@@ -99,7 +99,7 @@ After writing the plan file, create a beads epic and per-agent-step issues that 
 
 #### Beads Availability Check
 
-Before creating beads issues, verify beads is available by attempting `beads:epic`.
+Before creating beads issues, verify beads is available by attempting `beads:search`.
 
 - **Beads available:** Proceed with the standard procedure below.
 - **Beads unavailable:** Switch to **Inline Task Graph** mode. Instead of creating beads issues, embed the full task graph directly in the plan file as an additional section:
@@ -115,7 +115,12 @@ Before creating beads issues, verify beads is available by attempting `beads:epi
 
 ### P2: Implement — Core Logic [agent-impl] [blocked-by: P2-Write-Tests]
 - **Agent Context:** {full agent context}
-...
+
+### P2: Validate — Core Logic [agent-validate] [blocked-by: P2-Implement]
+- **Agent Context:** {full agent context}
+
+### P3: Write Tests — Feature Use Case [agent-test, L3] [blocked-by: P2-Validate]
+- **Agent Context:** {full agent context}
 ```
 
 Each inline issue follows the same description format as beads issues — self-contained with everything an agent needs. `/craft` will consume this inline graph when beads is unavailable.
