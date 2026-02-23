@@ -81,13 +81,15 @@ Write the plan directly to `docs/plans/YYYY-MM-DD-{topic}-plan.md` using the `Wr
 - **Approval Checklist** — Pre-implementation verification
 - **Next Steps** — Path to `/craft`
 
-**Phase ordering:**
+**Phase ordering (application code projects):**
 1. Database Schema (if needed)
 2. Core Logic (L3 boundary — property/invariant tests)
 3. Repository Layer (if needed)
 4. Feature Use Cases (L3 boundary — behavioral assertions)
 5. HTTP Routes (L4 boundary — contract tests)
 6. Full Integration (verification)
+
+For content or configuration projects with no application code, use flat `[no-test]` phases ordered by dependency. The TDD phase ordering above applies to application code projects.
 
 See [template.md](references/template.md) for the complete template with Agent Context block reference.
 

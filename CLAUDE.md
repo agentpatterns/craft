@@ -55,13 +55,38 @@ The crafter plugin enforces ports-and-adapters architecture:
 - Domain → Application → Adapters (dependencies flow inward only)
 - Naming: `*View`/`*Response` for display, `*Request` for input, `*Dbo` for database entities
 
-## Creating New Skills
-
-When asked to create a new skill, use the `/skill-creator` skill. It provides a guided workflow for authoring well-structured skills. Invoke it before doing anything else.
-
 ## Skill Authoring Guidelines
 
 - A skill's `SKILL.md` MUST be under 300 lines of markdown. Keep the main file focused on the core workflow and decision logic.
 - Supporting content (examples, reference tables, deep-dive explanations, templates) SHOULD go in the skill's `references/` subdirectory as separate markdown files, linked from the main `SKILL.md`.
-- Preserve the YAML frontmatter structure (name, description, triggers, allowed-tools metadata) when editing or creating skills.
 - Each skill is a directory containing `SKILL.md` and an optional `references/` subdirectory.
+
+### Frontmatter Format
+
+Every `SKILL.md` MUST begin with YAML frontmatter in this format:
+
+```yaml
+---
+name: skill-name
+description: One-sentence description of what the skill does and when to use it.
+triggers:
+  - "specific trigger phrase"
+  - "another trigger phrase"
+allowed-tools: Read Glob Write
+---
+```
+
+- `name` — Kebab-case identifier matching the skill directory name.
+- `description` — Concise summary shown in plugin listings.
+- `triggers` — List of phrases that activate the skill. Use specific multi-word phrases; avoid bare single-word triggers that risk false activation.
+- `allowed-tools` — Space-separated list of Claude Code tools the skill may use.
+
+### Subtype Dispatch Pattern
+
+Skills that serve multiple related use cases (e.g., different diagram types, different project scaffolds) use the **subtype dispatch pattern** instead of creating separate skills:
+
+1. **Dispatch table in `SKILL.md`** — A table mapping user intent to a subtype identifier and its reference directory.
+2. **Subtype reference directories** — `references/{subtype}/` contains all syntax, examples, and conventions for that subtype.
+3. **Explicit load instruction** — The skill MUST instruct the agent to "read ALL files from `references/{subtype}/`" before proceeding.
+
+Skills using this pattern: `diagram` (subtypes: `likec4-c4`, `likec4-dynamic`, `data-flow`) and `scaffold` (subtypes: `typescript`).

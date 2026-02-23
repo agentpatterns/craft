@@ -22,7 +22,6 @@ triggers:
   - "data flow"
   - "data movement"
   - "data transformation"
-  - "diagram"
 allowed-tools: Read Glob Write
 ---
 
