@@ -42,9 +42,7 @@ After installation, skills become available as `crafter:skill-name` and are auto
 
 ## Available Skills
 
-### Crafter Plugin
-
-The `crafter` plugin provides skills for day-to-day software development:
+The `crafter` plugin provides skills for software development, architecture, and diagramming:
 
 | Skill | Command | Description |
 |-------|---------|-------------|
@@ -56,6 +54,10 @@ The `crafter` plugin provides skills for day-to-day software development:
 | **pair** | `/pair` | Guided pair-programming mode where Claude teaches rather than writes code |
 | **tidy** | `/tidy` | Audit agent-facing documentation (CLAUDE.md, READMEs) for staleness and recommend fixes |
 | **reflect** | `/reflect` | Post-session reflection that mines git history and artifacts to produce improvement proposals |
+| **diagram** | `/diagram` | Creates architecture diagrams (C4 structural, dynamic flows, data flow) with subtype dispatch |
+| **scaffold** | `/scaffold` | Scaffolds DDD projects from Gherkin feature files with language subtype dispatch |
+| **hexagonal-architecture** | `/hexagonal-architecture` | Applies hexagonal (ports & adapters) architecture with domain-first design |
+| **adr** | `/adr` | Guides writing minimal Architecture Decision Records |
 
 #### RPI Methodology (Research → Draft → Craft)
 
@@ -64,18 +66,3 @@ The crafter plugin's core workflow for non-trivial features:
 1. **Research** (`/research`) — Explore the codebase with parallel subagents, output a compact research artifact
 2. **Draft** (`/draft`) — Consume the research artifact, produce a compact implementation plan with test specs
 3. **Craft** (`/craft`) — Execute the plan phase by phase with strict RED → GREEN → REFACTOR discipline
-
-### Scaffolder Plugin
-
-The `scaffolder` plugin provides skills for software architecture:
-
-| Skill | Command | Description |
-|-------|---------|-------------|
-| **hexagonal-architecture** | `/hexagonal-architecture` | Applies hexagonal (ports & adapters) architecture with domain-first design |
-
-Install each plugin independently:
-
-```
-/plugin install crafter
-/plugin install scaffolder
-```

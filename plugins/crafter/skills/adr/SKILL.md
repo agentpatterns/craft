@@ -1,18 +1,12 @@
 ---
 name: adr
 description: Guides writing minimal Architecture Decision Records (ADRs). Use when recording architectural decisions, documenting design choices, capturing technical decisions with context and alternatives, or when user mentions ADR, architecture decision, or decision record.
-license: MIT
-compatibility: Claude Code plugin
-metadata:
-  author: eric-olson
-  version: "1.0.0"
-  workflow: architecture
-  triggers:
-    - "architecture decision record"
-    - "ADR"
-    - "decision record"
-    - "architectural decision"
-    - "record a decision"
+triggers:
+  - "architecture decision record"
+  - "ADR"
+  - "decision record"
+  - "architectural decision"
+  - "record a decision"
 allowed-tools: Read Glob Write
 ---
 

@@ -8,9 +8,8 @@ Craft is a Claude Code plugin marketplace that delivers skills (structured markd
 
 ## Project Structure
 
-- `.claude-plugin/marketplace.json` — Plugin registry declaring two plugins: `crafter` (v1.2.0) and `scaffolder` (v1.0.0)
-- `plugins/crafter/skills/` — Skills for the crafter plugin (tdd, research, draft, craft, refactor, pair, tidy, reflect)
-- `plugins/scaffolder/skills/` — Skills for the scaffolder plugin (hexagonal-architecture)
+- `.claude-plugin/marketplace.json` — Plugin registry declaring one plugin: `crafter` (v2.0.0)
+- `plugins/crafter/skills/` — Skills for the crafter plugin (research, draft, craft, tdd, refactor, reflect, tidy, pair, diagram, scaffold, hexagonal-architecture, adr)
 
 Each skill is a directory containing `SKILL.md` (with YAML frontmatter for name, description, triggers, allowed-tools) and an optional `references/` subdirectory with supplementary markdown.
 
@@ -52,7 +51,7 @@ Enforced across TDD, craft, and draft skills:
 
 ### Hexagonal Architecture
 
-The scaffolder plugin enforces ports-and-adapters architecture:
+The crafter plugin enforces ports-and-adapters architecture:
 - Domain → Application → Adapters (dependencies flow inward only)
 - Naming: `*View`/`*Response` for display, `*Request` for input, `*Dbo` for database entities
 
