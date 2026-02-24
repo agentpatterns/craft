@@ -278,25 +278,52 @@ _run_single_trigger_test() {
         return
     fi
 
-    # Non-dry-run: invoke claude CLI
-    # The probe prompt asks Claude when it would use the skill, then sends the phrase
+    # Non-dry-run: invoke claude CLI with the skill description injected as context.
+    # The --print flag runs stateless without plugins, so we must provide the skill
+    # description directly in the prompt for meaningful trigger classification.
+    local skill_description=""
+    local skill_md="${PROJECT_ROOT}/skills/${skill}/SKILL.md"
+    if [[ -f "$skill_md" ]]; then
+        # Extract the description from YAML frontmatter
+        skill_description=$(sed -n '/^---$/,/^---$/p' "$skill_md" | yq '.description // ""')
+    fi
+
     local probe_prompt
-    probe_prompt="When would you use the ${skill} skill? Now, given that, would you activate it for this input: \"${phrase}\" — respond with only YES or NO."
+    if [[ -n "$skill_description" ]]; then
+        probe_prompt="You have a skill called '${skill}' with description: \"${skill_description}\". Given that description, would you activate this skill for the following user input? \"${phrase}\" — respond with only YES or NO."
+    else
+        probe_prompt="When would you use the ${skill} skill? Now, given that, would you activate it for this input: \"${phrase}\" — respond with only YES or NO."
+    fi
 
     if [[ "$OPT_VERBOSE" == true ]]; then
         echo "    [PROBE] ${test_id}"
         echo "      Prompt: ${probe_prompt}"
     fi
 
-    local claude_output
-    claude_output=$(claude --print "${probe_prompt}" 2>/dev/null || echo "ERROR")
+    local claude_output claude_stderr
+    local stderr_file
+    stderr_file=$(mktemp)
+    claude_output=$(env -u CLAUDECODE claude --print "${probe_prompt}" 2>"$stderr_file") || true
+    claude_stderr=$(<"$stderr_file")
+    rm -f "$stderr_file"
+
+    if [[ -z "$claude_output" && -n "$claude_stderr" ]]; then
+        claude_output="ERROR"
+        if [[ "$OPT_VERBOSE" == true ]]; then
+            echo -e "      ${RED}stderr: ${claude_stderr}${RESET}"
+        fi
+    fi
 
     # Determine pass/fail based on polarity
+    # Use word-boundary search anywhere in the response, not just line start
     local result="FAIL"
     local color="$RED"
+    local first_word
+    first_word=$(echo "$claude_output" | head -1 | awk '{print tolower($1)}')
+
     if [[ "$polarity" == "positive" ]]; then
-        # Expect YES in response
-        if echo "$claude_output" | grep -qi "^yes"; then
+        # Expect YES anywhere in response, with priority on first word
+        if [[ "$first_word" == "yes" ]] || echo "$claude_output" | grep -qi '\byes\b'; then
             result="PASS"
             color="$GREEN"
             (( TOTAL_PASS++ )) || true
@@ -304,8 +331,8 @@ _run_single_trigger_test() {
             (( TOTAL_FAIL++ )) || true
         fi
     else
-        # Expect NO in response
-        if echo "$claude_output" | grep -qi "^no"; then
+        # Expect NO anywhere in response, with priority on first word
+        if [[ "$first_word" == "no" ]] || echo "$claude_output" | grep -qi '\bno\b'; then
             result="PASS"
             color="$GREEN"
             (( TOTAL_PASS++ )) || true
@@ -420,25 +447,72 @@ Task: ${when_prompt}"
     fi
 
     echo -e "  ${YELLOW}Running...${RESET}"
-    local claude_output
-    claude_output=$(claude --print "$full_prompt" 2>/dev/null || echo "ERROR: claude invocation failed")
+    local claude_output claude_stderr
+    local stderr_file
+    stderr_file=$(mktemp)
+    claude_output=$(env -u CLAUDECODE claude --print "$full_prompt" 2>"$stderr_file") || true
+    claude_stderr=$(<"$stderr_file")
+    rm -f "$stderr_file"
+
+    if [[ -z "$claude_output" && -n "$claude_stderr" ]]; then
+        claude_output="ERROR: claude invocation failed"
+        echo -e "  ${RED}stderr: ${claude_stderr}${RESET}"
+    fi
 
     if [[ "$OPT_VERBOSE" == true ]]; then
         echo -e "  ${BOLD}Claude output:${RESET}"
         echo "$claude_output" | head -50 | sed 's/^/    /'
+        if [[ -n "$claude_stderr" ]]; then
+            echo -e "  ${BOLD}Claude stderr:${RESET}"
+            echo "$claude_stderr" | head -20 | sed 's/^/    /'
+        fi
     fi
 
-    # For code-graded scenarios, grade is deferred to filesystem checks (manual or CI).
-    # For llm-judge and human scenarios, we note the grading method required.
+    # Grade the output based on the grading type
     case "$grading" in
         code)
-            echo -e "  ${YELLOW}[CODE-GRADE]${RESET} Filesystem assertions require post-run inspection."
-            echo -e "  Run the assertions listed under 'Then' against your working directory."
-            (( TOTAL_SKIP++ )) || true
+            _grade_code_assertions "$yaml_file" "$index" "$then_count"
             ;;
         llm-judge)
-            echo -e "  ${YELLOW}[LLM-JUDGE]${RESET} Output requires LLM-as-judge evaluation (Tier 2)."
-            (( TOTAL_SKIP++ )) || true
+            # Feed output + assertions to a second Claude call for LLM-as-judge evaluation
+            local judge_prompt
+            judge_prompt="You are an LLM-as-judge evaluating whether a skill's output meets its assertions.
+
+Skill output (first 200 lines):
+$(echo "$claude_output" | head -200)
+
+Assertions to check:
+$(for (( k = 0; k < then_count; k++ )); do
+    yq ".functional[$index].then[$k]" "$yaml_file"
+done)
+
+For each assertion, respond with PASS or FAIL and a brief reason.
+End with a single line: VERDICT: PASS or VERDICT: FAIL"
+
+            local judge_output judge_stderr_file
+            judge_stderr_file=$(mktemp)
+            judge_output=$(env -u CLAUDECODE claude --print "$judge_prompt" 2>"$judge_stderr_file") || true
+            local judge_stderr=$(<"$judge_stderr_file")
+            rm -f "$judge_stderr_file"
+
+            if [[ "$OPT_VERBOSE" == true ]]; then
+                echo -e "  ${BOLD}LLM-Judge output:${RESET}"
+                echo "$judge_output" | sed 's/^/    /'
+            fi
+
+            if echo "$judge_output" | grep -qi "VERDICT:.*PASS"; then
+                echo -e "  [${GREEN}PASS${RESET}] LLM-Judge: all assertions met"
+                (( TOTAL_PASS++ )) || true
+            elif echo "$judge_output" | grep -qi "VERDICT:.*FAIL"; then
+                echo -e "  [${RED}FAIL${RESET}] LLM-Judge: one or more assertions failed"
+                (( TOTAL_FAIL++ )) || true
+            else
+                echo -e "  ${YELLOW}[LLM-JUDGE]${RESET} Judge returned no clear verdict."
+                if [[ -n "$judge_stderr" ]]; then
+                    echo -e "  ${RED}Judge stderr: ${judge_stderr}${RESET}"
+                fi
+                (( TOTAL_SKIP++ )) || true
+            fi
             ;;
         human)
             echo -e "  ${YELLOW}[HUMAN]${RESET} Output requires human review (Tier 3)."
@@ -449,6 +523,144 @@ Task: ${when_prompt}"
             (( TOTAL_SKIP++ )) || true
             ;;
     esac
+}
+
+# ---------------------------------------------------------------------------
+# _grade_code_assertions — Evaluate code-graded then[] assertions automatically
+# Arguments: $1 = yaml_file, $2 = index, $3 = then_count
+# Parses assertion text to detect check type and runs appropriate validation.
+# ---------------------------------------------------------------------------
+_grade_code_assertions() {
+    local yaml_file="$1"
+    local index="$2"
+    local then_count="$3"
+    local all_pass=true
+
+    local k
+    for (( k = 0; k < then_count; k++ )); do
+        local assertion
+        assertion=$(yq ".functional[$index].then[$k]" "$yaml_file")
+        local check_result="SKIP"
+        local check_detail=""
+
+        if echo "$assertion" | grep -qi "file exists\|file.*at"; then
+            # file-exists check: extract glob pattern from the assertion
+            local pattern
+            pattern=$(echo "$assertion" | grep -oP '(?:at |exists at |path )?\S+\.\w+' | tail -1)
+            if [[ -n "$pattern" ]]; then
+                # Search for matching files in project root
+                local found_files
+                found_files=$(find "$PROJECT_ROOT" -path "*${pattern}*" -type f 2>/dev/null | head -5)
+                if [[ -z "$found_files" ]]; then
+                    # Try glob-style match
+                    found_files=$(find "$PROJECT_ROOT" -name "*.md" -path "*/docs/plans/*" -type f 2>/dev/null | head -5)
+                fi
+                if [[ -n "$found_files" ]]; then
+                    check_result="PASS"
+                    check_detail="Found: $(echo "$found_files" | head -1)"
+                else
+                    check_result="FAIL"
+                    check_detail="No file matching pattern found"
+                    all_pass=false
+                fi
+            else
+                check_result="SKIP"
+                check_detail="Could not extract file pattern from assertion"
+            fi
+        elif echo "$assertion" | grep -qi "contains section:\|section:.*##"; then
+            # section-present check: extract section header
+            local section_header
+            section_header=$(echo "$assertion" | grep -oP '## \S[^"]*' | head -1)
+            if [[ -n "$section_header" ]]; then
+                # Search the most recent matching file
+                local target_file
+                target_file=$(find "$PROJECT_ROOT/docs/plans" -name "*.md" -type f -newer "$yaml_file" 2>/dev/null | sort -r | head -1)
+                if [[ -n "$target_file" ]] && grep -q "^${section_header}" "$target_file" 2>/dev/null; then
+                    check_result="PASS"
+                    check_detail="Section '${section_header}' found in ${target_file}"
+                elif [[ -z "$target_file" ]]; then
+                    check_result="FAIL"
+                    check_detail="No output file found to check for section"
+                    all_pass=false
+                else
+                    check_result="FAIL"
+                    check_detail="Section '${section_header}' not found in ${target_file}"
+                    all_pass=false
+                fi
+            else
+                check_result="SKIP"
+                check_detail="Could not extract section header from assertion"
+            fi
+        elif echo "$assertion" | grep -qi "approximately.*lines\|line count\|lines (target"; then
+            # quantitative check: extract expected range
+            local min_lines max_lines
+            min_lines=$(echo "$assertion" | grep -oP '\d+' | head -1)
+            max_lines=$(echo "$assertion" | grep -oP '\d+' | head -2 | tail -1)
+            local target_file
+            target_file=$(find "$PROJECT_ROOT/docs/plans" -name "*.md" -type f -newer "$yaml_file" 2>/dev/null | sort -r | head -1)
+            if [[ -n "$target_file" && -n "$min_lines" && -n "$max_lines" ]]; then
+                local actual_lines
+                actual_lines=$(wc -l < "$target_file")
+                if (( actual_lines >= min_lines && actual_lines <= max_lines )); then
+                    check_result="PASS"
+                    check_detail="${actual_lines} lines (expected ${min_lines}–${max_lines})"
+                else
+                    # Quantitative failures are warnings, not hard failures
+                    check_result="WARN"
+                    check_detail="${actual_lines} lines (expected ${min_lines}–${max_lines})"
+                fi
+            else
+                check_result="SKIP"
+                check_detail="Could not evaluate line count"
+            fi
+        elif echo "$assertion" | grep -qi "labeled with\|confidence\|every.*finding\|pattern.*present"; then
+            # string-match check: look for required patterns in output files
+            local target_file
+            target_file=$(find "$PROJECT_ROOT/docs/plans" -name "*.md" -type f -newer "$yaml_file" 2>/dev/null | sort -r | head -1)
+            if [[ -n "$target_file" ]]; then
+                if echo "$assertion" | grep -qi "confidence"; then
+                    # Check for High/Medium/Low confidence markers
+                    if grep -qP '\*\*(High|Medium|Low)\*\*' "$target_file" 2>/dev/null; then
+                        check_result="PASS"
+                        check_detail="Confidence levels found"
+                    else
+                        check_result="FAIL"
+                        check_detail="No confidence level markers found"
+                        all_pass=false
+                    fi
+                else
+                    check_result="SKIP"
+                    check_detail="String-match assertion not auto-evaluable"
+                fi
+            else
+                check_result="FAIL"
+                check_detail="No output file found"
+                all_pass=false
+            fi
+        else
+            check_result="SKIP"
+            check_detail="Assertion not auto-evaluable"
+        fi
+
+        local color
+        case "$check_result" in
+            PASS) color="$GREEN" ;;
+            FAIL) color="$RED" ;;
+            WARN) color="$YELLOW" ;;
+            *)    color="$CYAN" ;;
+        esac
+
+        printf "    [%b%s%b] %s\n" "$color" "$check_result" "$RESET" "$assertion"
+        if [[ "$OPT_VERBOSE" == true && -n "$check_detail" ]]; then
+            echo "           ${check_detail}"
+        fi
+    done
+
+    if [[ "$all_pass" == true ]]; then
+        (( TOTAL_PASS++ )) || true
+    else
+        (( TOTAL_FAIL++ )) || true
+    fi
 }
 
 # ---------------------------------------------------------------------------
