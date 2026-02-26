@@ -1,6 +1,6 @@
 # Agent Instructions
 
-This project is a Claude Code plugin marketplace containing **skills** — structured markdown workflow documents. There is no application code, build system, or test suite.
+This project is a Claude Code plugin marketplace containing **skills** — structured markdown workflow documents. There is no application code or build system. Skills are validated by a three-layer test pipeline (see Testing Skills below).
 
 For project architecture, key concepts (RPI methodology, testing philosophy, hexagonal architecture), and installation commands, see `docs/architecture.md`.
 
@@ -106,44 +106,58 @@ Claude receives the fully-rendered prompt with actual data.
 
 **Build evaluations BEFORE writing extensive documentation.** Work through one challenging task until Claude succeeds, then extract the winning approach into a skill.
 
-### The Claude A / Claude B Method
+### Three-Layer Testing Pipeline
 
-1. **Claude A** (expert): Helps design and refine the skill.
-2. **Claude B** (tester): Tests the skill in real tasks.
+Skills are validated across three layers. Each layer catches different failure modes.
 
-**Workflow:**
-1. Complete a task with Claude A using normal prompting — note what context you repeatedly provide.
-2. Ask Claude A to create a skill capturing the reusable pattern.
-3. Review for conciseness — remove explanations Claude doesn't need.
-4. Test with Claude B on real tasks. Observe behavior.
-5. Return to Claude A with specifics: "Claude B forgot to filter test accounts when asked for a regional report."
-6. Iterate.
+**Layer 1 — Deterministic (local + CI).** Validates structure, frontmatter, triggers, and scenario schemas. No API calls. Runs on every push via `.github/workflows/test-skills.yml`. Must pass before shipping.
 
-### Three Testing Areas
+```bash
+bash tests/local/validate-skills.sh
+```
 
-**1. Triggering** — Does the skill load at the right times?
-- Test positive triggers ("Help me set up a ProjectHub workspace")
-- Test negative triggers ("What's the weather?")
-- Fix under-triggering: add more keywords/phrases to description
-- Fix over-triggering: add negative scope, be more specific
+**Layer 2 — Promptfoo evals.** Functional and behavioral evaluation using real Claude API calls. See `tests/evals/README.md` for setup, cost, and per-scenario breakdown.
 
-**2. Functional** — Does the skill produce correct outputs?
-- Test valid outputs, error handling, and edge cases
-- Define expected behaviors as Given/When/Then assertions
+```bash
+cd tests/evals && promptfoo eval
 
-**3. Performance** — Does the skill improve over baseline?
-- Compare token usage, back-and-forth messages, and error rates with vs. without the skill
+# Run a single skill's scenarios
+promptfoo eval --filter-description "^\[research"
+```
 
-### Test Across Models
+**Layer 3 — Human review.** Manual review for subjective quality. Use for `human`-graded scenarios and to calibrate LLM-judge rubrics.
+
+### What Each Layer Tests
+
+| Area | What to check | Validated by |
+|------|--------------|-------------|
+| **Triggering** | Positive triggers load the skill; negative triggers do not | Layer 1 (structure), Layer 2 (live probe) |
+| **Functional** | Skill produces correct outputs (Given/When/Then assertions) | Layer 2 (Promptfoo evals) |
+| **Performance** | Token usage, clarification turns, error rates vs. baseline | Manual comparison |
+
+**Fixing trigger issues:**
+- Under-triggering → add more keywords/phrases to `description`
+- Over-triggering → add negative scope, be more specific in `description`
+
+### The Claude A/B Method
+
+Use two separate Claude sessions for manual testing:
+
+1. **Claude A** (expert) helps design and refine the skill.
+2. **Claude B** (tester) tests the skill cold — no prior context.
+3. Return specific failures to Claude A: "Claude B forgot to X when asked to Y."
+4. Iterate until Claude B succeeds reliably.
+
+### Cross-Model Testing
 
 Skills are additions to models, so effectiveness varies:
 - **Haiku**: Does the skill provide enough guidance?
 - **Sonnet**: Is the skill clear and efficient?
 - **Opus**: Does the skill avoid over-explaining?
 
-### Observing Skill Navigation
+### Observation Signals
 
-Watch for these signals during testing:
+Watch for these during testing:
 - **Unexpected exploration paths** → restructure content
 - **Missed references** → make links more explicit
 - **Overreliance on certain sections** → promote that content to `SKILL.md`
@@ -171,9 +185,10 @@ Watch for these signals during testing:
 - [ ] Forward slashes in all file paths
 
 ### Testing
-- [ ] At least 3 evaluation scenarios created
+- [ ] At least 3 evaluation scenarios created in `tests/scenarios/<skill>.yaml`
+- [ ] `bash tests/local/validate-skills.sh` passes with no failures
 - [ ] Triggering: loads on relevant queries, doesn't load on unrelated ones
-- [ ] Functional: produces correct outputs for all scenarios
+- [ ] Functional: produces correct outputs for all scenarios (run `cd tests/evals && promptfoo eval --filter-description "^\[<skill>"`)
 - [ ] Tested with target models (Haiku, Sonnet, Opus)
 - [ ] Tested with real usage scenarios (not just test scenarios)
 

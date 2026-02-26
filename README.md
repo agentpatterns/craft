@@ -2,43 +2,33 @@
 
 A Claude Code plugin providing skills for software development best practices.
 
-## Overview
+## Getting Started
 
-This plugin offers curated skills that guide Claude through proven software development workflows including test-driven development, architectural patterns, refactoring techniques, and AI development practices.
-
-## Installation
-
-### From GitHub
-
-In Claude Code, add the marketplace and install the plugin:
+### Install
 
 ```
 /plugin marketplace add agentpatterns/craft
 /plugin install crafter
 ```
 
-### From Local Directory
+After installation, skills are available as `crafter:skill-name` and activate automatically when relevant to your task.
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/agentpatterns/craft
-   ```
+### Install from Local Clone
 
-2. In Claude Code, add the marketplace and install:
-   ```
-   /plugin marketplace add /path/to/craft
-   /plugin install crafter@craft
-   ```
+```bash
+git clone https://github.com/agentpatterns/craft
+```
 
-### Updating
+```
+/plugin marketplace add /path/to/craft
+/plugin install crafter@craft
+```
 
-To get the latest version:
+### Update
 
 ```
 /plugin marketplace update craft
 ```
-
-After installation, skills become available as `crafter:skill-name` and are automatically triggered when relevant to your task.
 
 ## Available Skills
 
@@ -67,15 +57,26 @@ The crafter plugin's core workflow for non-trivial features:
 2. **Draft** (`/draft`) — Consume the research artifact, produce a compact implementation plan with test specs
 3. **Craft** (`/craft`) — Execute the plan phase by phase with strict RED → GREEN → REFACTOR discipline
 
-## Changelog
+## Testing
 
-### 2.2.1
+Skills are validated by a three-layer pipeline. See `tests/README.md` for full methodology.
 
-**Draft skill:**
-- Fixed beads availability probe to use `beads:search` instead of `beads:epic` (consistent with craft skill)
-- Expanded inline task graph fallback example to show complete TDD triplet (Write Tests → Implement → Validate) with correct `blocked-by` dependency chain
+**Layer 1 — Deterministic (local + CI):** Validates skill structure, frontmatter, triggers, and scenario schemas. No API calls. Runs on every push via GitHub Actions.
 
-**Craft skill:**
-- Added explicit VALIDATE gate definition: `tsc --noEmit && vitest run && biome check .`
-- Added lint fast path: auto-fix biome-only failures via `biome check --write --unsafe` instead of creating heavyweight remediation issues
-- Added anti-pattern: "Don't treat a biome-only VALIDATE failure as a full remediation event"
+```bash
+bash tests/local/validate-skills.sh
+```
+
+**Layer 2 — Promptfoo evals:** Functional and behavioral evaluation using real Claude API calls. See `tests/evals/README.md` for setup and cost.
+
+```bash
+cd tests/evals && promptfoo eval
+```
+
+**Layer 3 — Human review:** Manual review for subjective quality and calibrating LLM-judge rubrics.
+
+## Contributing
+
+See `AGENTS.md` for skill authoring guidelines, testing workflows, and the pre-ship checklist.
+
+See `docs/architecture.md` for project structure and key concepts.

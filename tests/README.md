@@ -44,7 +44,41 @@ Prefer higher-certainty methods (Finding 2).
 4. Return specific failures to Claude A: "Claude B forgot to X when asked to Y."
 5. Iterate. Test across models: Haiku, Sonnet, Opus.
 
-## How to Run Tests
+## Three-Layer Testing Model
+
+### Layer 1 — Deterministic (Local)
+
+Fast structural and trigger validation. No API calls. Runs in CI on every push and PR.
+
+```bash
+bash tests/local/validate-skills.sh
+```
+
+Checks 8 categories of rules:
+- Skill directory structure and frontmatter validity
+- Description length and content constraints
+- Trigger format (multi-word phrases, top-level key)
+- `allowed-tools` list
+- SKILL.md line count (≤300)
+- Scenario YAML schema
+- Trigger coverage (positive and negative entries present)
+- Rubric file references
+
+All checks must pass before shipping a skill.
+
+### Layer 2 — Promptfoo Evals (LLM)
+
+Functional and behavioral evaluation using the Claude CLI as a provider. Makes real API calls; incurs cost.
+
+```bash
+cd tests/evals && promptfoo eval
+```
+
+See [`tests/evals/README.md`](evals/README.md) for full setup, cost expectations, and per-scenario breakdown.
+
+### Layer 3 — Human Review
+
+Manual review for subjective quality: tone, teaching behavior, proposal relevance. Use when grading tier is `human` or when calibrating LLM-judge rubrics.
 
 ### Manual (Claude A/B)
 
@@ -53,13 +87,6 @@ Prefer higher-certainty methods (Finding 2).
    - Triggering: send the `input` phrase; verify skill loaded or did not.
    - Functional: execute `given` setup, send `when` prompt, check `then` assertions.
 3. Record pass/fail. Return failures to Claude A with scenario ID and observed behavior.
-
-### Automated (future)
-
-```bash
-# Not yet implemented — placeholder for CI integration
-python tests/runner.py --skill research --tier triggering
-```
 
 ## Scenario YAML Format
 
@@ -142,6 +169,11 @@ functional:
 ```
 tests/
 ├── README.md          # This file — methodology and format specification
+├── local/
+│   └── validate-skills.sh  # Layer 1: deterministic structural/trigger checks
+├── evals/
+│   ├── README.md           # Layer 2: Promptfoo eval setup and scenario breakdown
+│   └── promptfooconfig.yaml
 ├── scenarios/         # Per-skill YAML scenario files (one file per skill)
 └── rubrics/           # Grading rubrics for LLM-as-judge evaluation
 ```

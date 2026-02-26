@@ -2,7 +2,7 @@
 
 ## What This Project Is
 
-Craft is a Claude Code plugin marketplace that delivers skills (structured markdown workflow documents) for software development best practices. There is no application code, build system, or test suite — the project is entirely markdown content and plugin configuration.
+Craft is a Claude Code plugin marketplace that delivers skills (structured markdown workflow documents) for software development best practices. There is no application code or build system. Testing is handled by a three-layer pipeline described below.
 
 ## Project Structure
 
@@ -25,6 +25,18 @@ Each skill is a directory containing `SKILL.md` (with YAML frontmatter for name,
 # Update
 /plugin marketplace update craft
 ```
+
+## Testing Pipeline
+
+Skills are validated by a three-layer pipeline:
+
+| Layer | What | How |
+|-------|------|-----|
+| 1 — Deterministic | Structural and trigger validation (no API calls) | `bash tests/local/validate-skills.sh` |
+| 2 — Promptfoo evals | Functional and behavioral evaluation via Claude CLI | `cd tests/evals && promptfoo eval` |
+| 3 — Human review | Subjective quality review | Manual |
+
+Layer 1 runs automatically in CI via `.github/workflows/test-skills.yml` on every push and PR. See `tests/README.md` for methodology and `tests/evals/README.md` for eval setup and cost.
 
 ## Key Concepts
 
