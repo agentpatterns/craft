@@ -1,10 +1,11 @@
 ---
 name: research
-description: Research phase of RPI methodology. Spawns parallel subagents for codebase exploration AND web/pattern research, then synthesizes findings for user review. Produces compact research artifact. Use at the start of non-trivial features.
+description: Research phase of RPI methodology. Spawns parallel subagents for codebase exploration AND web/pattern research, then synthesizes findings for user review. Produces a compact research artifact at docs/plans/YYYY-MM-DD-{topic}-research.md. Use before implementing non-trivial features to understand what already exists.
 triggers:
-  - "research"
+  - "research the codebase"
   - "explore codebase"
-  - "investigate"
+  - "investigate the code"
+  - "research before implementing"
 allowed-tools: Read Glob Grep Task TaskOutput WebSearch WebFetch AskUserQuestion Write Bash(plannotator:*)
 ---
 
@@ -13,6 +14,12 @@ allowed-tools: Read Glob Grep Task TaskOutput WebSearch WebFetch AskUserQuestion
 **RPI Phase 1 of 3:** Research → Plan → Implement
 
 Use this skill at the start of non-trivial features to explore the codebase AND research external patterns before planning or implementing.
+
+## Phase Contract
+
+**Receives:** User's feature description (or codebase context from previous conversation)
+**Produces:** Research artifact at `docs/plans/YYYY-MM-DD-{topic}-research.md` (~200 lines)
+**Hands off to:** `/draft` — pass the artifact path as input
 
 ## Purpose
 

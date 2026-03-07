@@ -3,10 +3,11 @@ name: adr
 description: Guides writing minimal Architecture Decision Records (ADRs). Use when recording architectural decisions, documenting design choices, capturing technical decisions with context and alternatives, or when user mentions ADR, architecture decision, or decision record.
 triggers:
   - "architecture decision record"
-  - "ADR"
+  - "write an ADR"
   - "decision record"
   - "architectural decision"
   - "record a decision"
+  - "create an ADR"
 allowed-tools: Read Glob Write
 ---
 

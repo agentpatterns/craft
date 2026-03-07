@@ -1,11 +1,12 @@
 ---
 name: reflect
-description: Post-session reflection skill. Reads recent git history, artifacts, and context files to extract learnings and produce improvement proposals for skills, CLAUDE.md, hooks, and plan templates. Use after any substantive session.
+description: Post-session skill to reflect on what was built and produce improvement proposals. Reads recent git history, artifacts, and context files to extract learnings for skills, CLAUDE.md, hooks, and plan templates. Use after any substantive session as a post-mortem or retrospective.
 triggers:
-  - "reflect"
-  - "retrospective"
+  - "reflect on session"
+  - "session retrospective"
   - "session reflection"
   - "what did we learn"
+  - "post-mortem review"
 allowed-tools: Read Glob Grep Bash Task TaskOutput Write AskUserQuestion EnterPlanMode ExitPlanMode
 ---
 
@@ -93,6 +94,7 @@ If git is unavailable (e.g., eval sandbox), include a **Commits (Simulated)** se
 
 - Poll agents with `TaskOutput block: false` to check progress
 - Collect completed results with `TaskOutput block: true`
+- If `TaskOutput` is unavailable, run agents in foreground mode (omit `run_in_background`) and collect results directly
 - If an agent returns thin results, note the gap — do NOT dispatch a follow-up
 
 ### 4. Enter Plan Mode

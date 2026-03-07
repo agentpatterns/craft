@@ -4,12 +4,12 @@ description: Creates architecture diagrams using LikeC4 (structural C4, dynamic 
 triggers:
   - "C4 diagram"
   - "architecture diagram"
-  - "LikeC4"
+  - "LikeC4 diagram"
   - "system diagram"
   - "container diagram"
   - "component diagram"
   - "deployment diagram"
-  - "architecture-as-code"
+  - "architecture as code"
   - "dynamic view"
   - "sequence diagram"
   - "workload flow"
@@ -18,8 +18,8 @@ triggers:
   - "temporal flow"
   - "dynamic diagram"
   - "data flow diagram"
-  - "DFD"
-  - "data flow"
+  - "DFD diagram"
+  - "data flow visualization"
   - "data movement"
   - "data transformation"
 allowed-tools: Read Glob Write
@@ -96,11 +96,11 @@ Apply the dispatch table and decision tree above. Confirm the subtype before loa
 
 ### Step 4 — Load ALL Reference Files
 
-Using the Read tool, load every markdown file from the selected subtype directory:
+Using the Read tool, load ALL markdown files from the selected subtype's `references/` directory. Use Glob to enumerate the files if needed:
 
-- `likec4-c4`: `references/likec4-c4/dsl-syntax.md`, `references/likec4-c4/view-examples.md`, `references/likec4-c4/style-guide.md`
-- `likec4-dynamic`: `references/likec4-dynamic/dsl-syntax.md`, `references/likec4-dynamic/flow-examples.md`
-- `data-flow`: `references/data-flow/dfd-notation.md`, `references/data-flow/dfd-examples.md`
+```
+Glob references/{subtype}/*.md
+```
 
 These files are your complete syntax and convention reference. Do not generate the diagram without reading them.
 

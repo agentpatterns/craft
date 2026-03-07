@@ -1,11 +1,11 @@
 ---
 name: hexagonal-architecture
-description: Applies hexagonal (ports & adapters) architecture. Use when designing application structure, separating domain from infrastructure, creating testable boundaries, or when user mentions ports, adapters, hexagonal, or clean architecture.
+description: Architectural guidance for hexagonal (ports and adapters) patterns. Does not generate files — use scaffold for project generation. Use when designing application structure, separating domain from infrastructure, creating testable boundaries, or when user mentions ports, adapters, hexagonal, or clean architecture.
 triggers:
   - "hexagonal architecture"
   - "ports and adapters"
   - "clean architecture"
-  - "domain boundaries"
+  - "hexagonal domain boundaries"
 allowed-tools: Read Glob Write
 ---
 
@@ -86,6 +86,24 @@ Adapters adding logic beyond translation. Adapters should be thin—just impleme
 - **Adapters**: Integration tests against real infrastructure (real database, real HTTP)
 
 Ports give clean seams for test doubles. Test the domain exhaustively with fast unit tests; test adapters against real infrastructure sparingly.
+
+## Workflow
+
+1. **Identify the bounded context** — Name the module or service being designed. Establish its responsibility boundary before classifying any component.
+
+2. **Apply the Core Decision Rule to each component** — For every candidate class or module, ask: "Does it do I/O or run out-of-process?" Inside (no) or adapter (yes).
+
+3. **Define ports (interfaces) in the domain layer** — Each external dependency the domain or application needs must be expressed as an interface owned by the domain. No concrete infrastructure types cross this boundary.
+
+4. **Implement adapters outside the hexagon** — Each port gets one or more adapter implementations in the infrastructure layer. Adapters are thin: they translate and delegate; they do not contain business logic.
+
+5. **Apply naming conventions** — Name all DTOs, database entities, and mapping methods per the conventions in the Naming Conventions section above.
+
+6. **Check for anti-patterns** — Review the Anti-Patterns section. Specifically look for: third-party types in the domain, use cases calling other use cases, and framework annotations inside the hexagon.
+
+7. **Verify testability** — Domain and application layers must be unit-testable without real infrastructure. If a test requires a live database or HTTP call to test domain logic, a boundary has been violated.
+
+> **Note:** This skill provides architectural guidance. It does not scaffold files. Use the `scaffold` skill to generate the project structure. See [references/disclaimer.md](references/disclaimer.md) for scope boundaries.
 
 ## When NOT to Use
 

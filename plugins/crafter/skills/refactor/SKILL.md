@@ -2,9 +2,11 @@
 name: refactor
 description: Refactoring process with test safety. Invoke immediately when user or document mentions refactoring, or proactively when code gets too complex or messy.
 triggers:
-  - "refactor"
-  - "refactoring"
+  - "refactor this code"
+  - "refactor the code"
+  - "refactoring code"
   - "clean up code"
+  - "extract method"
 allowed-tools: Read Glob Write Bash
 ---
 
@@ -58,6 +60,43 @@ Prefer self-explanatory, readable code over comments.
 - Use domain language - name things for what they ARE, not how they're implemented
 - Keep consistent abstraction levels within methods
 
+**Example — extract method and rename variable:**
+
+Before:
+```javascript
+// apply discount
+const x = order.items.reduce((sum, i) => sum + i.price, 0);
+return x * (1 - order.dc);
+```
+
+After:
+```javascript
+const subtotal = sumItemPrices(order.items);
+return subtotal * (1 - order.discountRate);
+
+function sumItemPrices(items) {
+  return items.reduce((sum, item) => sum + item.price, 0);
+}
+```
+
+**Example — remove dead code and use domain language:**
+
+Before:
+```javascript
+function process(u, t) {
+  // TODO: remove legacy path
+  if (false) { return legacyProcess(u, t); }
+  return chargeCard(u.card, t.amount);
+}
+```
+
+After:
+```javascript
+function processPayment(user, transaction) {
+  return chargeCard(user.card, transaction.amount);
+}
+```
+
 ### Process
 
 For each refactor:
@@ -103,4 +142,8 @@ Provide a high-level summary of the refactoring:
 - All commits: {list of commit messages}
 - Final test result: {PASS with test count}
 ```
+
+---
+
+This skill was originally adapted from Llewellyn Falco's refactoring process. See [credits.md](references/credits.md) for attribution.
 

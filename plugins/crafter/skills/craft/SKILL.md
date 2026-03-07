@@ -1,10 +1,11 @@
 ---
 name: craft
-description: Implement phase of RPI methodology. Executes beads-driven task graph using isolated agents for test-first discipline. Use when executing an implementation plan from the draft skill.
+description: Implement phase of RPI methodology. Executes beads-driven task graph using isolated agents with strict RED/GREEN/VALIDATE gate enforcement. Use when executing an implementation plan from the draft skill.
 triggers:
-  - "implement"
+  - "implement the plan"
   - "execute plan"
   - "build from plan"
+  - "implement from plan"
 allowed-tools: Read Glob Write Bash Task TaskOutput Skill
 ---
 
@@ -14,6 +15,12 @@ allowed-tools: Read Glob Write Bash Task TaskOutput Skill
 
 Use this skill to execute an implementation plan using beads-driven orchestration with isolated agents for strict test-first discipline.
 
+## Phase Contract
+
+**Receives:** Beads task graph (epic + per-agent-step issues) created by `/draft` — NOT the plan file
+**Produces:** Working feature with passing tests + `craft-execution-log.md` execution audit trail
+**Does NOT read:** `docs/plans/YYYY-MM-DD-{topic}-plan.md` — beads issues are self-contained
+
 ## Purpose
 
 The Implement phase executes a beads task graph created by `/draft`. Each beads issue is a self-contained agent task with everything needed for dispatch. The dependency graph enforces ordering. `beads:ready` drives execution.
@@ -22,9 +29,6 @@ Three agent types per TDD phase:
 - **Agent 1 (Write Test):** Creates failing tests from the issue's test spec — knows nothing about the implementation
 - **Agent 2 (Implement):** Writes minimal code to make tests pass — guided only by the tests
 - **Agent 3 (Validate):** Runs the full test suite — confirms nothing is broken
-
-**Input:** Beads epic with per-agent-step issues (created by `/draft`)
-**Output:** Working feature with passing tests
 
 ## When to Use
 
@@ -186,14 +190,19 @@ If Agent 1's tests pass immediately (before implementation):
 
 ### VALIDATE Gate Definition
 
-The VALIDATE gate is: `tsc --noEmit && vitest run && biome check .` — all three commands must exit 0. Agent 3 runs this gate and reports the result.
+The VALIDATE gate is the project's full test and lint suite. Agent 3 determines the gate command by reading the project's `CLAUDE.md` (or `package.json` / equivalent build file) for the configured test, type-check, and lint commands. All commands must exit 0.
+
+Example for a TypeScript/Bun project: `tsc --noEmit && vitest run && biome check .`
+Example for a Python project: `mypy . && pytest && ruff check .`
+
+Agent 3 always derives the actual commands from the project rather than using hardcoded defaults.
 
 ### Lint Fast Path
 
-If VALIDATE fails **only on biome** (tests pass, tsc clean), apply the lint fast path instead of creating remediation issues:
+If VALIDATE fails **only on the lint command** (tests pass, type-check clean), apply the lint fast path instead of creating remediation issues:
 
-1. Run `biome check --write --unsafe` to auto-fix lint issues
-2. Re-run the full VALIDATE gate (`tsc --noEmit && vitest run && biome check .`)
+1. Run the project's lint auto-fix command (e.g., `biome check --write --unsafe`, `ruff check --fix .`)
+2. Re-run the full VALIDATE gate
 3. If gate passes → close the Validate issue and proceed
 4. If gate still fails → fall through to standard remediation
 
@@ -224,7 +233,7 @@ No special recovery logic needed. The beads state *is* the execution state.
 - **Don't read the plan file during execution** — beads issues are self-contained
 - **Don't improvise beyond the plan** — stick to the beads issues or update them explicitly
 - **Don't run agents in background** — synchronous dispatch ensures ordering
-- **Don't treat a biome-only VALIDATE failure as a full remediation event** — use the lint fast path (`biome check --write --unsafe`) instead
+- **Don't treat a lint-only VALIDATE failure as a full remediation event** — use the lint fast path (auto-fix command from project CLAUDE.md) instead
 
 ## After Implementation
 

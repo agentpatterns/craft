@@ -1,13 +1,13 @@
 ---
 name: scaffold
-description: Scaffold a DDD project from Gherkin feature files. Supports multiple languages via subtype dispatch. Use when scaffolding projects, creating domain-driven design structures, or generating project boilerplate from acceptance tests.
+description: Scaffold a DDD project from Gherkin feature files. Supports TypeScript via subtype dispatch (extensible to other languages). Use when scaffolding projects, creating domain-driven design structures, or generating project boilerplate from acceptance tests.
 triggers:
-  - "scaffold"
+  - "scaffold from gherkin"
   - "scaffold typescript"
   - "scaffold ts"
   - "DDD typescript"
   - "scaffold project"
-  - "domain-driven"
+  - "domain-driven design"
   - "domain-driven typescript"
 allowed-tools: Read Glob Write Bash
 ---

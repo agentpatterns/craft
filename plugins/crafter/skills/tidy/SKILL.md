@@ -1,8 +1,8 @@
 ---
 name: tidy
-description: Audit agent-facing documentation for staleness and recommend fixes. Use when CLAUDE.md or READMEs may be out of date.
+description: Audit agent-facing documentation (CLAUDE.md, READMEs) for broken links, stale paths, wrong commands, and outdated descriptions. Recommend and apply fixes with severity classification. Use when documentation may be out of date after refactoring, renaming, or feature changes.
 triggers:
-  - "tidy"
+  - "tidy the docs"
   - "tidy first"
   - "audit docs"
   - "update claude.md"
@@ -32,6 +32,8 @@ This skill **only** touches documentation files. It does NOT:
 
 ### Step 1: Read Documentation Files
 
+Before starting, review [CLAUDE.md best practices](references/claude-md-best-practices.md) for quality benchmarks and common staleness patterns. Use the [report template](references/report-template.md) to structure findings. If dispatching subagents, see [agent prompts](references/agent-prompts.md) for prompt templates.
+
 Read the project's agent-facing documentation:
 1. `CLAUDE.md` (and `CLAUDE.local.md` if present)
 2. `README.md`
@@ -49,6 +51,12 @@ For each documentation file, check:
 | **Outdated descriptions** | Sections describing features, structure, or behavior that no longer match reality |
 
 Use `Glob` and `Read` to verify paths and commands referenced in the docs actually exist.
+
+**Example finding:**
+```
+CLAUDE.md references `src/utils/helpers.ts` but the file was renamed to `src/shared/helpers.ts`
+Severity: must-fix (agent will look for the wrong file)
+```
 
 ### Step 3: Present Findings
 

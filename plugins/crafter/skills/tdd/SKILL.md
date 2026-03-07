@@ -1,16 +1,13 @@
 ---
 name: tdd
-description: Boundary-focused TDD workflow enforcing L3/L4 altitude testing, property-based tests, and phase separation. Use when implementing features that require writing tests and code.
+description: Boundary-focused TDD workflow enforcing L3/L4 altitude testing, property-based tests, and red-green-refactor phase separation. Use when starting a new module or feature with test-first discipline.
 triggers:
-  - "TDD"
+  - "TDD workflow"
   - "test driven development"
   - "red green refactor"
   - "write tests first"
+  - "test-first implementation"
 allowed-tools: Read Glob Write Bash
-metadata:
-  author: eric-olson
-  version: "1.0.0"
-  workflow: testing
 ---
 
 # Test-Driven Development Process

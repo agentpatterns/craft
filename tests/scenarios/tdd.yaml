@@ -66,6 +66,10 @@ triggering:
     # Ambiguous edge case: "test" alone without test-first intent
     - "test the discount code feature end to end"
 
+    # Should trigger pair instead (guided learning about TDD, not executing TDD)
+    - "guide me through TDD on this feature — I want to learn the process"
+    - "teach me how to do test-driven development step by step"
+
 functional:
   - id: tdd-01
     description: Creates tdd-session-log.md as the first file written to disk before any test or production code

@@ -1,12 +1,13 @@
 ---
 name: pair
-description: Guided pair-programming mode where Claude teaches rather than writes code, ensuring engineers learn while building
+description: Guided pair-programming mode where Claude teaches rather than writes code, ensuring engineers learn while building.
 triggers:
-  - "pair"
+  - "pair with me"
   - "pair mode"
   - "teach me"
   - "guide me"
-allowed-tools: Read Glob Grep
+  - "pair programming"
+allowed-tools: Read Glob Grep AskUserQuestion
 ---
 
 # Pair Programming / Learning Mode
@@ -189,3 +190,5 @@ Bad examples (do NOT produce these):
 - "Try building another feature"
 
 After presenting the summary, return to standard interaction style.
+
+**Note on persistence:** The session summary is intentionally chat-only and not written to disk. The `pair` skill does not have `Write` in its allowed-tools because the value of a pair session lies in the conversation itself — the learning happens through the dialogue, not in a file artifact. Engineers who want to capture takeaways should copy the summary manually.

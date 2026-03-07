@@ -66,6 +66,10 @@ YOUR ROLE: Run the full test suite and report results. Do NOT modify any files.
 {issue_description}
 
 IMPORTANT: Do NOT fix anything. Only report.
+
+Before running, read the project's CLAUDE.md (or package.json / equivalent build file) to determine
+the correct test, type-check, and lint commands for this project. Do NOT assume a specific language
+or toolchain. Run all configured commands; all must exit 0 for the VALIDATE gate to pass.
 ```
 
 ### No-Test Agent (label: no-test)
