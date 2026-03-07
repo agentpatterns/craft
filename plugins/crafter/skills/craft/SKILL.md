@@ -144,7 +144,26 @@ After all issues in the epic are closed:
 1. Run the full test suite one final time
 2. Verify all acceptance criteria from the epic are met
 3. Report the agent execution summary (issues closed, remediations)
-4. Suggest next steps (commit, PR, follow-up)
+
+Check plannotator availability: `Bash: plannotator --version`
+
+**If available:** Run `plannotator review` via Bash to open the full git diff in the browser code review UI. Wait for the result:
+- **"LGTM" returned:** Proceed to the next-steps prompt.
+- **Feedback returned:** Address each item — fix code, NOT tests. Re-run the full test suite after fixes. Then re-run `plannotator review`. Repeat until LGTM.
+
+**If unavailable:** Skip browser review; proceed to next-steps prompt.
+
+Use `AskUserQuestion` to present:
+
+```
+Implementation complete. All {N} issues closed, tests passing.
+
+What would you like to do?
+
+1. Commit and push — run /commit
+2. Review changes — I'll summarize what was built
+3. Follow-up work — describe what to tackle next
+```
 
 ## Agent Isolation Discipline
 

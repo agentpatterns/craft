@@ -5,7 +5,7 @@ triggers:
   - "research"
   - "explore codebase"
   - "investigate"
-allowed-tools: Read Glob Grep Task TaskOutput WebSearch WebFetch AskUserQuestion Write
+allowed-tools: Read Glob Grep Task TaskOutput WebSearch WebFetch AskUserQuestion Write Bash(plannotator:*)
 ---
 
 # Research Skill
@@ -131,45 +131,51 @@ Use the [research artifact template](references/template.md). Target ~200 lines.
 
 **REQUIRED — Do not skip this step.**
 
-Use `AskUserQuestion` to present:
-- A summary of key findings (3-5 bullet points)
-- The artifact path
+Check if plannotator is available:
+```
+Bash: plannotator --version
+```
 
-If the user requests edits → update the artifact in place with `Write`, then ask again. Repeat until the user approves.
+**If plannotator is available:**
+Run `plannotator annotate docs/plans/YYYY-MM-DD-{topic}-research.md` via Bash. This opens the artifact in a browser annotation UI and blocks until the user submits.
+- **Non-empty annotations returned:** Address each annotation by updating the artifact with `Write`, then re-run `plannotator annotate` on the same file. Repeat until empty annotations.
+- **Empty annotations returned:** The user is satisfied. Proceed to Step 6.
+
+**If plannotator is not available (command not found):**
+Fall back to `AskUserQuestion`: present a summary of key findings (3-5 bullet points) and the artifact path. If the user requests edits → update the artifact with `Write`, then ask again. Repeat until approved.
 
 ### 6. Prompt Next Steps and STOP
 
-Present the following output EXACTLY — this is the required format:
+Use `AskUserQuestion` to present the following options:
 
-```markdown
----
+```
+Research complete. Artifact saved: `docs/plans/YYYY-MM-DD-{topic}-research.md`
 
-## Research Complete
+What would you like to do next?
 
-**Artifact saved:** `docs/plans/YYYY-MM-DD-{topic}-research.md`
+1. I'll run /clear then /draft — start planning (recommended)
+2. Request more research — describe what else to investigate
+3. Edit the artifact — describe changes and I'll update it
 
-### Next steps — in order:
-
-1. **Run `/clear`** to reset the context window
-2. **Run `/draft docs/plans/YYYY-MM-DD-{topic}-research.md`** to create the implementation plan
-3. After draft completes, run `/craft` to execute
-
-> **Why /clear?** Research-phase context (agent outputs, file reads, web fetches) pollutes the planning phase. Clearing ensures `/draft` works from the compact artifact alone.
+> Why /clear? Research-phase context (agent outputs, file reads, web fetches) pollutes the planning phase. Clearing ensures /draft works from the compact artifact alone.
 ```
 
 Replace `YYYY-MM-DD-{topic}` with the actual artifact path.
+
+- **Option 1:** STOP. Do not invoke /draft — the user will do it after /clear.
+- **Option 2:** Return to Step 2 (dispatch additional agents), then repeat Steps 4-6.
+- **Option 3:** Update artifact with `Write`, then re-present Step 6 options.
 
 **Then STOP. Do not take any further actions. The research phase is complete.**
 
 ## STOP — Phase Complete
 
-**After the user approves the research artifact, your job is DONE.**
+**After the user selects option 1, your job is DONE.**
 
 - Do NOT proceed to planning or implementation
 - Do NOT invoke /draft or /craft
 - Do NOT write any code files
 - Do NOT create any plans or task graphs
-- Your ONLY remaining action is to tell the user the next steps (/clear → /draft)
 - Then STOP responding
 
 The next phases happen in separate conversations with clean context windows.

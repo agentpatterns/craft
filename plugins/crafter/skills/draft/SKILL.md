@@ -175,22 +175,31 @@ Phase 6 (verification):
 
 ### 4. Present Plan for Review
 
-Tell the user:
-- The file path where the plan was saved (audit trail)
-- The beads epic name and issue count (execution source of truth)
-- A brief summary of the key sections (goal, phases, acceptance criteria)
-- Ask if they want any changes before proceeding to `/craft`
+Check plannotator availability: `Bash: plannotator --version`
+
+**If available:** Run `plannotator annotate docs/plans/YYYY-MM-DD-{topic}-plan.md` via Bash. Iterate on non-empty annotation feedback — update BOTH the plan file AND corresponding beads issue descriptions for any changed phases. Empty annotations = approved.
+
+**If unavailable:** Tell the user the plan file path, beads epic name and issue count, and a brief summary (goal, phases, acceptance criteria). Use `AskUserQuestion` to ask if they want changes; iterate until approved.
 
 ### 5. Prompt Next Steps
 
+Use `AskUserQuestion` to present:
+
 ```
-Implementation plan saved. Next steps:
+Plan ready.
 - Plan file (audit trail): docs/plans/YYYY-MM-DD-{topic}-plan.md
-- Beads epic created: {epic name} ({N} issues, dependencies wired)
-- Run `/craft` to execute — it will dispatch agents from beads issues
-- Session recovery: if interrupted, `/craft` picks up where it left off via beads:ready
-- If changes needed, clarify what to adjust and I'll update both the plan and beads issues
+- Beads epic: {epic name} ({N} issues, dependencies wired)
+
+What would you like to do?
+
+1. Run /craft — execute the plan now
+2. Request changes — describe what to adjust (I'll update plan file and beads issues)
+3. Inspect beads graph — review issues before executing
 ```
+
+- **Option 1:** STOP. The user will run `/craft`.
+- **Option 2:** Update plan file and beads issues, then re-present Step 5 options.
+- **Option 3:** Run `beads:list` to show the epic's issues, then re-present Step 5 options.
 
 ## Test Specifications at Boundaries
 
