@@ -61,7 +61,7 @@ The crafter plugin's core workflow for non-trivial features:
 
 Skills are validated by a three-layer pipeline. See `tests/README.md` for full methodology.
 
-**Layer 1 — Deterministic (local + CI):** Validates skill structure, frontmatter, triggers, and scenario schemas. No API calls. Runs on every push via GitHub Actions.
+**Layer 1 — Deterministic (local):** Validates skill structure, frontmatter, triggers, and scenario schemas. No API calls.
 
 ```bash
 bash tests/local/validate-skills.sh

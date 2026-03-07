@@ -1,12 +1,14 @@
 ---
 name: draft
-description: Draft phase of RPI methodology. Consumes research artifact or topic and produces compact implementation plan with test specs and Agent Context blocks. Use after research or to start planning and drafting a non-trivial feature.
+description: Draft phase of RPI methodology. Consumes research artifact or topic and produces compact implementation plan with test specs and Agent Context blocks. Activates naturally inside plan mode for non-trivial work, or invoke explicitly with /draft. Use after research or to start planning a non-trivial feature.
 triggers:
   - "draft a plan"
   - "draft plan"
   - "implementation plan"
   - "plan the implementation"
-allowed-tools: Read Glob Write Bash AskUserQuestion Skill
+  - "plan non-trivial work"
+  - "plan a feature"
+allowed-tools: Read Glob Write Bash AskUserQuestion Skill ExitPlanMode
 ---
 
 # Craft Plan Skill
@@ -15,28 +17,31 @@ allowed-tools: Read Glob Write Bash AskUserQuestion Skill
 
 Use this skill after research (or standalone) to create a compact implementation plan with behavioral test specifications and Agent Context blocks for each phase.
 
+**Plan-mode-native:** When Claude is inside plan mode for non-trivial work, this skill's planning behavior applies naturally — no slash command required. The research skill transitions into plan mode automatically after research is complete.
+
 ## Phase Contract
 
-**Receives:** Research artifact at `docs/plans/YYYY-MM-DD-{topic}-research.md` (or inline feature description if no research phase was run)
-**Produces:** Plan file (audit trail) at `docs/plans/YYYY-MM-DD-{topic}-plan.md` + beads task graph (execution source of truth)
-**Hands off to:** `/craft` — consumes the beads task graph, NOT the plan file
+**Receives:** Research artifact at `.claude/scratch/{topic}-research.md` (or inline feature description if no research phase was run)
+**Produces:** Plan in the Claude Code session plan file + yaks task graph (created after plan approval)
+**Hands off to:** `/craft` — consumes the yaks task graph, NOT the plan file
 
 ## Purpose
 
 The Plan phase creates a compact spec that fits in context by:
+- Summarizing research findings inline (consuming the `.claude/scratch/` artifact)
 - Defining files to create/modify in order of operations
 - Specifying test specs as behavioral descriptions at architectural boundaries
 - Including Agent Context blocks so `/craft` can dispatch isolated agents per phase
 - Setting clear acceptance criteria
 - Identifying phase boundaries for incremental implementation
 
-**Output:** Compact plan (~200 lines) at `docs/plans/YYYY-MM-DD-{topic}-plan.md`
+**Output:** Plan in the Claude Code session plan file (the only plan file during planning — the persistent session artifact is written by `/craft` at the end of execution)
 
 ## When to Use
 
 Use this skill when:
-- Completing research phase (has research artifact)
-- Starting a non-trivial feature (no research artifact, will create one)
+- Inside plan mode after completing research (has research artifact in `.claude/scratch/`)
+- Starting a non-trivial feature (no research artifact, will explore inline)
 - Need a clear implementation roadmap before coding
 - Want to specify test boundaries before implementing
 
@@ -49,10 +54,12 @@ Use this skill when:
 
 ### 1. Consume Research Artifact (If Exists)
 
-If research artifact exists:
+Check for research artifact:
 ```
-Read: docs/plans/YYYY-MM-DD-{topic}-research.md
+Glob: .claude/scratch/*-research.md
 ```
+
+If research artifact exists, read it and summarize findings inline in the plan. The plan should be self-contained — a reader should not need to go back to the research artifact.
 
 If no research artifact, create an inline summary (condensed):
 - Identify relevant files
@@ -66,13 +73,12 @@ Ask the user to clarify if needed:
 - Are there specific constraints or preferences?
 - What's the priority (MVP vs full feature)?
 
-### 3. Create Implementation Plan (Audit Trail)
+### 3. Write Plan to Session Plan File
 
-Write the plan directly to `docs/plans/YYYY-MM-DD-{topic}-plan.md` using the `Write` tool and the [template structure](references/template.md). Use kebab-case for the topic slug (e.g., `2026-02-21-add-discount-codes-plan.md`).
-
-**Note:** The plan file serves as a **human-readable audit trail** for code review, PR descriptions, and design understanding. It is NOT the runtime source of truth for `/craft` — beads issues are (see Step 3b).
+Write the plan to the Claude Code session plan file. This is the plan mode's native output — the user sees it for approval before exiting plan mode.
 
 **Required sections:**
+- **Context** — Why this change is being made, summarizing research findings
 - **Goal** — 1-2 sentence description of what we're building and why
 - **Acceptance Criteria** — Testable outcomes as checklist
 - **Files to Create** — Organized by layer (Core, Features, Shell, Tests)
@@ -85,8 +91,8 @@ Write the plan directly to `docs/plans/YYYY-MM-DD-{topic}-plan.md` using the `Wr
   - **Agent Context block** (file paths, test command, gates, constraints)
 - **Constraints & Considerations** — Architectural, testing, performance, security
 - **Out of Scope** — Explicitly deferred features
-- **Approval Checklist** — Pre-implementation verification
-- **Next Steps** — Path to `/craft`
+
+See [template.md](references/template.md) for the complete template with Agent Context block reference.
 
 **Phase ordering (application code projects):**
 1. Database Schema (if needed)
@@ -98,45 +104,50 @@ Write the plan directly to `docs/plans/YYYY-MM-DD-{topic}-plan.md` using the `Wr
 
 For content or configuration projects with no application code, use flat `[no-test]` phases ordered by dependency. The TDD phase ordering above applies to application code projects.
 
-See [template.md](references/template.md) for the complete template with Agent Context block reference.
-
-### 3b. Create Beads Task Graph (Execution Source of Truth)
-
-After writing the plan file, create beads issues that `/craft` will execute. The beads task graph is the **contract between draft and craft**. See [beads-decomposition.md](references/beads-decomposition.md) for the full procedure including:
-
-- Beads availability check (with inline task graph fallback)
-- Epic and issue creation procedure
-- Dependency wiring and labeling
-- Issue description format (self-contained Agent Context)
-- Example decomposition for a 6-phase feature
-
 ### 4. Present Plan for Review
 
 Check plannotator availability: `Bash: plannotator --version`
 
-**If available:** Run `plannotator annotate docs/plans/YYYY-MM-DD-{topic}-plan.md` via Bash. Iterate on non-empty annotation feedback — update BOTH the plan file AND corresponding beads issue descriptions for any changed phases. Empty annotations = approved.
+**If available:** Run `plannotator annotate` on the plan file via Bash. Iterate on non-empty annotation feedback. Empty annotations = approved.
 
-**If unavailable:** Tell the user the plan file path, beads epic name and issue count, and a brief summary (goal, phases, acceptance criteria). Use `AskUserQuestion` to ask if they want changes; iterate until approved.
+**If unavailable:** Present a brief summary (goal, phases, acceptance criteria) via `AskUserQuestion`. Iterate until approved.
 
-### 5. Prompt Next Steps
+### 5. Exit Plan Mode and Create Yaks Task Graph
+
+Once the plan is approved, call `ExitPlanMode`. Then immediately create the yaks task graph — this is the **commitment point** where the approved plan becomes executable.
+
+See [yaks-decomposition.md](references/yaks-decomposition.md) for the full procedure including:
+
+- Yaks availability check (with inline task graph fallback)
+- Epic and phase group creation procedure
+- Naming conventions for ordering
+- Agent context piping
+- Example decomposition for a 6-phase feature
+
+Report the result:
+```
+Yaks epic created: {epic name}
+Tasks: {N} ({M} TDD triplets, {K} no-test phases)
+Ready to execute with /craft.
+```
+
+### 6. Prompt Next Steps
 
 Use `AskUserQuestion` to present:
 
 ```
-Plan ready.
-- Plan file (audit trail): docs/plans/YYYY-MM-DD-{topic}-plan.md
-- Beads epic: {epic name} ({N} issues, dependencies wired)
+Plan approved. Yaks epic: {epic name} ({N} tasks)
 
 What would you like to do?
 
 1. Run /craft — execute the plan now
-2. Request changes — describe what to adjust (I'll update plan file and beads issues)
-3. Inspect beads graph — review issues before executing
+2. Inspect yaks graph — review tasks before executing
+3. Request changes — describe what to adjust (I'll update yaks)
 ```
 
 - **Option 1:** STOP. The user will run `/craft`.
-- **Option 2:** Update plan file and beads issues, then re-present Step 5 options.
-- **Option 3:** Run `beads:list` to show the epic's issues, then re-present Step 5 options.
+- **Option 2:** Run `yx list` to show the epic's tasks, then re-present options.
+- **Option 3:** Update yaks, then re-present options.
 
 ## Test Specifications at Boundaries
 
@@ -164,7 +175,7 @@ See [template.md](references/template.md) for detailed guidelines.
 
 ## Agent Context Blocks
 
-Every implementation phase with tests MUST include an `#### Agent Context` subsection in the plan file (for audit). The same Agent Context is embedded in each beads issue description (for execution). This is the contract between `/draft` and `/craft`.
+Every implementation phase with tests MUST include an `#### Agent Context` subsection. The same Agent Context is stored in each yak's context (for execution). This is the contract between `/draft` and `/craft`.
 
 **Required fields:**
 - **Files to create/modify** — explicit paths
@@ -173,7 +184,7 @@ Every implementation phase with tests MUST include an `#### Agent Context` subse
 - **RED gate / GREEN gate** — observable success criteria
 - **Architectural constraints** — boundaries the agent must respect
 
-See [template.md](references/template.md) for the Agent Context block reference and beads issue description templates.
+See [template.md](references/template.md) for the Agent Context block reference and yak context templates.
 
 ## Phase Boundaries
 
@@ -195,25 +206,10 @@ Bad boundaries: "Implement everything", mixing multiple layers
 - **Don't create giant phases** — Keep phases small and focused
 - **Don't omit verification steps** — Each phase needs concrete, observable checks
 
-## After Planning
-
-Once plan is complete and reviewed:
-1. User reviews plan at `docs/plans/YYYY-MM-DD-{topic}-plan.md` (audit trail)
-2. User verifies beads epic and issues via `beads:list` or `beads:epic`
-3. User approves or requests changes (both plan file and beads issues are updated)
-4. Run `/craft` — it executes purely from beads issues, not the plan file
-
-## Context Compaction
-
-**Why plan after research?** The plan phase is a compaction point:
-- **Before planning:** Research artifact (~200 lines of findings)
-- **After planning:** Implementation spec (~200 lines of actionable phases with Agent Context)
-- **Implementation phase** works from self-contained beads issues, not raw research or the plan file
-
 ## Session Recovery
 
-The beads task graph provides durable state across sessions:
-- **Closed issues** = completed work (agents ran, gates passed, files on disk)
-- **Ready issues** = next tasks to dispatch (use `beads:ready`)
-- **Blocked issues** = waiting on dependencies
+The yaks task graph provides durable state across sessions:
+- **Done yaks** = completed work (agents ran, gates passed, files on disk)
+- **Ready yaks** = next tasks to dispatch (computed from naming convention via `yx list --format json`)
+- **Waiting yaks** = predecessor groups not yet done
 - If a session is interrupted, running `/craft` again picks up exactly where it left off

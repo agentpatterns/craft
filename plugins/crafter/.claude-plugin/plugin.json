@@ -1,0 +1,10 @@
+{
+  "name": "crafter",
+  "version": "4.0.0",
+  "description": "Claude Code skills for software development best practices including TDD, refactoring, architecture patterns, diagramming, scaffolding, and AI development workflows.",
+  "author": {
+    "name": "Eric Olson"
+  },
+  "repository": "https://github.com/agentpatterns/craft",
+  "hooks": "./hooks/hooks.json"
+}

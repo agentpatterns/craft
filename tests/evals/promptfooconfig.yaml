@@ -240,90 +240,90 @@ tests:
       skill: draft
       grading: code
 
-  # draft-03: TDD phases are decomposed into exactly 3 beads issues (Write Tests, Implement, Validate)
-  - description: "[draft-03] TDD phases decomposed into exactly 3 beads issues with correct dependencies"
+  # draft-03: TDD phases are decomposed into exactly 3 yaks tasks (Write Tests, Implement, Validate)
+  - description: "[draft-03] TDD phases decomposed into exactly 3 yaks tasks with correct dependencies"
     vars:
       prompt: |
-        GIVEN: A project where beads is available (beads:search returns results without error).
+        GIVEN: A project where yaks is available (yx list returns results without error).
         Research artifact describes a feature with at least one TDD layer.
 
         TASK: plan the implementation of a discount code feature with TDD phases
     assert:
       - type: llm-rubric
         value: |
-          You are evaluating whether the draft skill correctly decomposed TDD phases into beads issues.
+          You are evaluating whether the draft skill correctly decomposed TDD phases into yaks tasks.
 
           Score each dimension 1-3. Pass threshold: 9 out of 12.
 
-          Dimension 1 — Beads epic creation (1-3): Was a beads epic created for the feature?
-            1 = No beads epic was created
+          Dimension 1 — Yaks epic creation (1-3): Was a yaks epic created for the feature?
+            1 = No yaks epic was created
             2 = Epic mentioned but creation is ambiguous
-            3 = A beads epic was explicitly created for the feature
+            3 = A yaks epic was explicitly created for the feature
 
-          Dimension 2 — TDD issue triplet (1-3): Did each TDD phase produce exactly 3 beads issues (Write Tests, Implement, Validate)?
-            1 = Fewer than 3 issues per TDD phase or issues have wrong names
-            2 = 3 issues created but naming or structure is off
-            3 = Exactly 3 issues per TDD phase: Write Tests, Implement, Validate
+          Dimension 2 — TDD issue triplet (1-3): Did each TDD phase produce exactly 3 yaks tasks (Write Tests, Implement, Validate)?
+            1 = Fewer than 3 tasks per TDD phase or tasks have wrong names
+            2 = 3 tasks created but naming or structure is off
+            3 = Exactly 3 tasks per TDD phase: Write Tests, Implement, Validate
 
-          Dimension 3 — Dependency chain (1-3): Are issue dependencies correct (Write Tests → Implement → Validate)?
-            1 = No dependencies set between issues
+          Dimension 3 — Dependency chain (1-3): Are task dependencies correct (Write Tests → Implement → Validate)?
+            1 = No dependencies set between tasks
             2 = Some dependencies set but chain is incomplete
             3 = Write Tests blocks Implement; Implement blocks Validate
 
-          Dimension 4 — Non-TDD phases (1-3): Do non-TDD phases (schema, infrastructure) produce exactly 1 beads issue?
-            1 = Non-TDD phases also produce 3 issues (incorrect)
-            2 = Non-TDD phases produce 1-2 issues (partially correct)
-            3 = Non-TDD phases produce exactly 1 beads issue each
+          Dimension 4 — Non-TDD phases (1-3): Do non-TDD phases (schema, infrastructure) produce exactly 1 yak?
+            1 = Non-TDD phases also produce 3 tasks (incorrect)
+            2 = Non-TDD phases produce 1-2 tasks (partially correct)
+            3 = Non-TDD phases produce exactly 1 yak each
 
           Return: PASS or FAIL, total score (e.g. "10/12"), one sentence per dimension.
     metadata:
       skill: draft
       grading: llm-judge
 
-  # draft-04: Each beads issue description is self-contained and does not reference the plan file
-  - description: "[draft-04] Beads issue descriptions are self-contained and do not reference the plan file"
+  # draft-04: Each yak context is self-contained and does not reference the plan file
+  - description: "[draft-04] Yak contexts are self-contained and do not reference the plan file"
     vars:
       prompt: |
-        GIVEN: A project where beads is available. Draft has completed and created a beads epic with issues.
+        GIVEN: A project where yaks is available. Draft has completed and created a yaks epic with tasks.
 
         TASK: draft a plan for adding webhook support to the notification system
     assert:
       - type: llm-rubric
         value: |
-          You are evaluating whether the draft skill created self-contained beads issue descriptions.
+          You are evaluating whether the draft skill created self-contained yak contexts.
 
           Score each dimension 1-3. Pass threshold: 9 out of 12.
 
-          Dimension 1 — Full Agent Context inline (1-3): Does each beads issue contain the full Agent Context inline?
-            1 = Issues reference the plan file instead of including Agent Context
-            2 = Most issues have inline context but one or more link back to the plan
-            3 = Every issue contains full Agent Context inline without referencing docs/plans/
+          Dimension 1 — Full Agent Context inline (1-3): Does each yak contain the full Agent Context inline?
+            1 = Tasks reference the plan file instead of including Agent Context
+            2 = Most tasks have inline context but one or more link back to the plan
+            3 = Every yak contains full Agent Context inline without referencing docs/plans/
 
-          Dimension 2 — No plan file references (1-3): Do any issues contain phrases like "see plan file" or "refer to docs/plans/"?
-            1 = One or more issues contain explicit plan file references
+          Dimension 2 — No plan file references (1-3): Do any tasks contain phrases like "see plan file" or "refer to docs/plans/"?
+            1 = One or more tasks contain explicit plan file references
             2 = No direct links but context implies the plan file is required
-            3 = No issue body references the plan file in any way
+            3 = No yak context references the plan file in any way
 
-          Dimension 3 — Standalone executability (1-3): Could an agent execute each phase reading only the beads issue?
+          Dimension 3 — Standalone executability (1-3): Could an agent execute each phase reading only the yak context?
             1 = Agent would need the plan file to understand what to do
             2 = Agent could probably proceed but missing some context
-            3 = Each issue is fully self-contained; no external file needed
+            3 = Each yak is fully self-contained; no external file needed
 
           Dimension 4 — Agent Context completeness (1-3): Do inline Agent Context blocks include all required fields?
             1 = Missing 3+ required fields (Files, Test spec, Test command, RED gate, GREEN gate, Constraints)
             2 = Missing 1-2 required fields
-            3 = All required Agent Context fields present in every issue
+            3 = All required Agent Context fields present in every yak
 
           Return: PASS or FAIL, total score (e.g. "10/12"), one sentence per dimension.
     metadata:
       skill: draft
       grading: llm-judge
 
-  # draft-05: Falls back to inline task graph when beads is unavailable
-  - description: "[draft-05] Falls back to inline task graph when beads is unavailable"
+  # draft-05: Falls back to inline task graph when yaks is unavailable
+  - description: "[draft-05] Falls back to inline task graph when yaks is unavailable"
     vars:
       prompt: |
-        GIVEN: A project where beads is NOT available (beads:search returns a tool-not-found error or similar).
+        GIVEN: A project where yaks is NOT available (yx list returns a tool-not-found error or similar).
 
         TASK: plan the implementation of user profile photo uploads
     assert:
@@ -347,7 +347,7 @@ tests:
   - description: "[craft-01] Creates craft-execution-log.md with structured entries"
     vars:
       prompt: |
-        GIVEN: A project with a beads epic containing three issues: P1 Write Test, P1 Implement, P1 Validate.
+        GIVEN: A project with a yaks epic containing three tasks: P1 Write Test, P1 Implement, P1 Validate.
         No craft-execution-log.md exists yet. The user has a complete plan ready to execute.
 
         TASK: execute plan for the discount codes epic
@@ -370,12 +370,12 @@ tests:
   - description: "[craft-02] Full gate pass path — RED, GREEN, VALIDATE all pass, issue closed"
     vars:
       prompt: |
-        GIVEN: A beads epic with a single TDD phase: P1 Write Test, P1 Implement, P1 Validate.
+        GIVEN: A yaks epic with a single TDD phase: P1 Write Test, P1 Implement, P1 Validate.
         Agent 1 writes tests that fail (RED gate passes).
         Agent 2 writes implementation that makes tests pass (GREEN gate passes).
         Agent 3 runs full suite — tsc, vitest, biome all exit 0 (VALIDATE gate passes).
 
-        TASK: implement the feature from the beads task graph
+        TASK: implement the feature from the yaks task graph
     assert:
       - type: regex
         value: "\\[GATE PASS\\].*RED|RED.*\\[GATE PASS\\]"
@@ -393,7 +393,7 @@ tests:
   - description: "[craft-03] RED gate fail causes hard stop — implementation not dispatched"
     vars:
       prompt: |
-        GIVEN: A beads epic with P1 Write Test and P1 Implement issues.
+        GIVEN: A yaks epic with P1 Write Test and P1 Implement tasks.
         Agent 1 writes tests that pass immediately (feature already exists or tests are tautological).
         The RED gate check detects that the tests pass before any implementation code is written.
 
@@ -430,16 +430,16 @@ tests:
       skill: craft
       grading: llm-judge
 
-  # craft-04: GREEN gate fail proceeds to validation — enters remediation via dynamic issue creation
+  # craft-04: GREEN gate fail proceeds to validation — enters remediation via dynamic task creation
   - description: "[craft-04] GREEN gate fail proceeds to validation and enters remediation"
     vars:
       prompt: |
-        GIVEN: A beads epic with P1 Write Test, P1 Implement, P1 Validate issues.
+        GIVEN: A yaks epic with P1 Write Test, P1 Implement, P1 Validate tasks.
         Agent 1 writes failing tests (RED passes).
         Agent 2 cannot make tests pass (GREEN gate fails).
         Agent 3 reports full failure output.
 
-        TASK: implement the feature from the beads task graph
+        TASK: implement the feature from the yaks task graph
     assert:
       - type: icontains
         value: "[GATE FAIL]"
@@ -455,11 +455,11 @@ tests:
       skill: craft
       grading: code
 
-  # craft-05: Lint fast path — biome-only VALIDATE failure auto-fixed without creating remediation issues
-  - description: "[craft-05] Lint fast path — biome-only failure auto-fixed without remediation issues"
+  # craft-05: Lint fast path — biome-only VALIDATE failure auto-fixed without creating remediation tasks
+  - description: "[craft-05] Lint fast path — biome-only failure auto-fixed without remediation tasks"
     vars:
       prompt: |
-        GIVEN: A beads epic where Agent 3's VALIDATE run finds: tsc exits 0, vitest exits 0, but biome exits 1
+        GIVEN: A yaks epic where Agent 3's VALIDATE run finds: tsc exits 0, vitest exits 0, but biome exits 1
         (lint errors only — no type errors, no test failures).
 
         TASK: execute plan for the discount codes epic
@@ -485,10 +485,10 @@ tests:
             2 = Re-run mentioned but it is unclear if all checks (tsc, vitest, biome) were included
             3 = Full VALIDATE gate (tsc + vitest + biome) was re-run after auto-fix
 
-          Dimension 4 — No remediation issues created (1-3): Were no new remediation beads issues created?
-            1 = Remediation and re-validation issues were created unnecessarily
-            2 = One unnecessary issue was created
-            3 = No new remediation or re-validation beads issues were created
+          Dimension 4 — No remediation tasks created (1-3): Were no new remediation yaks tasks created?
+            1 = Remediation and re-validation tasks were created unnecessarily
+            2 = One unnecessary task was created
+            3 = No new remediation or re-validation yaks tasks were created
 
           Return: PASS or FAIL, total score (e.g. "10/12"), one sentence per dimension.
     metadata:
@@ -499,7 +499,7 @@ tests:
   - description: "[craft-06] Escalates to user after 2 failed remediation attempts"
     vars:
       prompt: |
-        GIVEN: A beads epic where Agent 3 finds failures, remediation attempt 1 is dispatched and re-validation
+        GIVEN: A yaks epic where Agent 3 finds failures, remediation attempt 1 is dispatched and re-validation
         still fails, remediation attempt 2 is dispatched and re-validation still fails.
 
         TASK: execute plan for the discount codes epic
@@ -525,10 +525,10 @@ tests:
             2 = Claude stopped but did not ask for guidance
             3 = Claude stopped and explicitly asked the user for guidance
 
-          Dimension 4 — Beads issue updated (1-3): Was the blocked issue updated to blocked status in beads?
-            1 = No beads status update was performed
+          Dimension 4 — Yaks task updated (1-3): Was the blocked task updated to blocked status in yaks?
+            1 = No yaks status update was performed
             2 = A status update was mentioned but not confirmed
-            3 = The blocked issue was explicitly updated to blocked status in beads
+            3 = The blocked task was explicitly updated to blocked status in yaks
 
           Return: PASS or FAIL, total score (e.g. "10/12"), one sentence per dimension.
     metadata:

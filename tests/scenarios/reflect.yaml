@@ -45,10 +45,10 @@ triggering:
     # Should trigger draft instead (planning, not reflecting)
     - "plan the next phase of the OAuth feature"
     - "create an implementation roadmap based on the research"
-    - "draft the beads task graph for the payment refactor"
+    - "draft the yaks task graph for the payment refactor"
 
     # Should trigger craft instead (building, not reflecting)
-    - "implement the feature from the beads task graph"
+    - "implement the feature from the yaks task graph"
     - "execute the plan and dispatch the agents"
     - "build from the plan we drafted"
 

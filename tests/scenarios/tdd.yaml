@@ -46,8 +46,8 @@ triggering:
     - "draft the test boundaries before implementation"
 
     # Should trigger craft instead (orchestrating agents, not writing tests manually)
-    - "execute the beads task graph — Agent 1 will write the tests"
-    - "run the agent-test step from the beads epic"
+    - "execute the yaks task graph — Agent 1 will write the tests"
+    - "run the agent-test step from the yaks epic"
     - "build from plan using isolated agents for each TDD phase"
 
     # Should trigger reflect instead

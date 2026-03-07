@@ -46,7 +46,7 @@ triggering:
 
     # Should trigger craft instead (direct execution, not guided learning)
     - "implement the feature from the draft plan"
-    - "execute the beads task graph for the login refactor"
+    - "execute the yaks task graph for the login refactor"
     - "build out the discount code validator from the spec"
 
     # Should trigger tdd instead (test-first workflow, not guided learning)

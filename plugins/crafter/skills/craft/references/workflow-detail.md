@@ -1,120 +1,129 @@
 # Craft Implement: Workflow Details
 
-This reference provides detailed templates, examples, and procedures for executing the beads-driven implementation workflow.
+This reference provides detailed templates, examples, and procedures for executing the yaks-driven implementation workflow.
 
-## Agent Dispatch from Beads Issues
+## Agent Dispatch from Yaks
 
-Each beads issue contains a self-contained agent task description. The craft orchestrator reads the issue description via `beads:show` and uses it to build the agent prompt. No plan file reading is needed.
+Each yak contains a self-contained agent task description in its context. The craft orchestrator reads the context via `yx context "{yak name}"` and uses it to build the agent prompt. No plan file reading is needed.
 
 ### Building Agent Prompts
 
-For each ready issue from `beads:ready`:
+For each ready yak (from readiness computation):
 
-1. Run `beads:show {issue-id}` to get the full description
-2. The description follows the self-contained format from `/draft` (see draft template.md)
-3. Wrap the description in a Task tool call with `subagent_type: general-purpose`
-4. The agent receives the issue description as its complete instructions
+1. Run `yx context "{yak name}"` to get the full agent context
+2. The context follows the self-contained format from `/draft` (see draft template.md)
+3. Dispatch via `Task` tool using the registered agent type matching the yak's `agent-type` field
+4. The agent receives the yak context as its prompt — its system prompt is defined in the plugin's `agents/` directory
 
-### Agent 1: Write Test (label: agent-test)
+### Agent Dispatch Table
 
-**Purpose:** Create failing tests for the current phase.
-**Agent type:** `general-purpose` (subagent_type)
-**Model:** `sonnet`
-**Mode:** Synchronous (not background)
+| agent-type Field | Agent Type (subagent_type) | Purpose |
+|------------------|---------------------------|---------|
+| `agent-test` | `crafter:agent-test` | Write failing tests (RED gate) |
+| `agent-impl` | `crafter:agent-impl` | Minimal implementation + YAGNI check (GREEN gate) |
+| `agent-validate` | `crafter:agent-validate` | Run full test suite, report only (VALIDATE gate) |
+| `no-test` | `crafter:agent-no-test` | Non-TDD tasks (schema, infrastructure) |
+| `agent-remediate` | `crafter:agent-remediate` | Fix implementation after validation failures |
 
-Prompt template — substitute `{issue_description}` with the full beads issue description:
+### Dispatch Format
 
-```
-You are executing a test-writing task from the project's issue tracker.
-
-YOUR ROLE: Write failing tests ONLY. Do NOT write any implementation code.
-
-{issue_description}
-
-IMPORTANT: If tests pass immediately, something is wrong. Report this as a RED gate FAIL.
-```
-
-### Agent 2: Implement (label: agent-impl)
-
-**Purpose:** Write minimal code to make tests pass.
-**Agent type:** `general-purpose` (subagent_type)
-**Model:** `sonnet`
-**Mode:** Synchronous (not background)
+For each agent dispatch, pass the yak context as the prompt:
 
 ```
-You are executing an implementation task from the project's issue tracker.
-
-YOUR ROLE: Write minimal implementation to make existing tests pass. Do NOT modify test files.
-
-{issue_description}
-
-IMPORTANT: Do NOT modify test files. If a test seems wrong, report it and let a human decide.
+Task(
+  description="P{N}: {Phase} — {agent role}",
+  subagent_type="crafter:agent-test",  // or agent-impl, agent-validate, etc.
+  prompt="{yak_context}"
+)
 ```
 
-### Agent 3: Validate (label: agent-validate)
+The registered agents have their own system prompts defining role, rules, and report format. The yak context provides the task-specific context (file paths, test specs, gates, constraints).
 
-**Purpose:** Run the full test suite to ensure nothing is broken.
-**Agent type:** `general-purpose` (subagent_type)
-**Model:** `haiku`
-**Mode:** Synchronous (not background)
+See `plugins/crafter/agents/` for the full agent definitions:
+- `agent-test.md` — RED gate: writes failing tests only
+- `agent-impl.md` — GREEN gate: minimal implementation + YAGNI simplification pass
+- `agent-validate.md` — VALIDATE gate: runs full suite, reports only, never fixes
+- `agent-no-test.md` — Non-TDD tasks (schema, config, infrastructure)
+- `agent-remediate.md` — Fixes implementation after validation failures (uses opus)
 
+---
+
+## Readiness Computation Algorithm
+
+The craft skill computes readiness from `yx list --format json` output. This replaces the external tracker's `ready` command.
+
+### Algorithm
+
+```python
+# Pseudocode — the craft skill implements this logic
+def compute_ready(epic_json):
+    phase_groups = epic_json["children"]  # top-level children of the epic
+
+    # 1. Extract prefix number from name (e.g., "P2-Core-Logic" → 2)
+    for group in phase_groups:
+        group["prefix"] = int(re.match(r"P(\d+)", group["name"]).group(1))
+
+    # 2. Group by prefix number
+    by_prefix = defaultdict(list)
+    for group in phase_groups:
+        by_prefix[group["prefix"]].append(group)
+
+    # 3. Find active groups (all lower-prefix groups done)
+    ready = []
+    for prefix in sorted(by_prefix.keys()):
+        # Check all lower-prefix groups are done
+        all_lower_done = all(
+            g["state"] == "done"
+            for p in by_prefix if p < prefix
+            for g in by_prefix[p]
+        )
+        if not all_lower_done:
+            break  # This prefix and all higher are blocked
+
+        for group in by_prefix[prefix]:
+            if group["state"] == "done":
+                continue
+            if not group["children"]:
+                # Leaf phase group — the group itself is the task
+                ready.append(group)
+            else:
+                # Parent phase group — find first non-done child
+                for child in sorted(group["children"], key=lambda c: c["name"]):
+                    if child["state"] != "done":
+                        ready.append(child)
+                        break
+
+    return ready
 ```
-You are executing a validation task from the project's issue tracker.
 
-YOUR ROLE: Run the full test suite and report results. Do NOT modify any files.
+### Example Walk-Through
 
-{issue_description}
-
-IMPORTANT: Do NOT fix anything. Only report.
-
-Before running, read the project's CLAUDE.md (or package.json / equivalent build file) to determine
-the correct test, type-check, and lint commands for this project. Do NOT assume a specific language
-or toolchain. Run all configured commands; all must exit 0 for the VALIDATE gate to pass.
+Given this yaks tree:
+```
+Epic: "Add Discount Codes"
+  P1-Schema-Setup         [done]
+  P2-Core-Logic           [wip]
+    01-write-tests        [done]
+    02-implement          [done]
+    03-validate           [todo]    ← READY
+  P2-Feature-B            [todo]
+    01-write-tests        [todo]    ← READY (P2 group independent)
+  P3-Repository           [todo]        (blocked — P2 not done)
 ```
 
-### No-Test Agent (label: no-test)
-
-**Purpose:** Execute non-TDD phase tasks (schema, infrastructure).
-**Agent type:** `general-purpose` (subagent_type)
-**Model:** `sonnet`
-**Mode:** Synchronous (not background)
-
-```
-You are executing a setup task from the project's issue tracker.
-
-YOUR ROLE: Execute the task as described. Verify the acceptance gate.
-
-{issue_description}
-```
-
-### Agent 2-R: Remediation (label: agent-remediate)
-
-**Purpose:** Fix implementation after validation finds failures.
-**Agent type:** `general-purpose` (subagent_type)
-**Model:** `opus`
-**Mode:** Synchronous (not background)
-
-```
-You are executing a remediation task from the project's issue tracker.
-
-YOUR ROLE: Fix the implementation to make all tests pass. Do NOT modify test files.
-
-{issue_description}
-
-IMPORTANT: Do NOT modify test files. Tests define the contract.
-```
+Ready tasks: `P2-Core-Logic/03-validate` AND `P2-Feature-B/01-write-tests` — dispatched in parallel.
 
 ---
 
 ## Parallel Dispatch
 
-When `beads:ready` returns multiple issues, dispatch them all in a **single message** with multiple `Task` tool calls.
+When readiness computation returns multiple tasks, dispatch them all in a **single message** with multiple `Task` tool calls.
 
 ### When Parallel Dispatch Occurs
 
-- Two independent phases have no dependency between them (e.g., Phase 1 schema + Phase 2 of an unrelated feature)
-- Multiple no-test setup tasks are unblocked simultaneously
-- Two TDD write-test agents for phases that don't depend on each other
+- Two phase groups share the same prefix number (e.g., P2-Feature-A and P2-Feature-B)
+- Multiple leaf phase groups are active simultaneously
+- A no-test phase and a test-write phase are both ready
 
 ### When NOT to Parallelize
 
@@ -124,49 +133,45 @@ When `beads:ready` returns multiple issues, dispatch them all in a **single mess
 
 ### Example: Parallel Dispatch
 
-If `beads:ready` returns issues #5 (no-test setup) and #8 (write tests for independent phase):
+If readiness returns `P1-Schema-Setup` (leaf, no-test) and `P1-Config-Setup` (leaf, no-test):
 
 ```
 # Single message with two Task calls:
-Task(description="P1: Apply Schema", subagent_type="general-purpose", model="sonnet", prompt="...")
-Task(description="P3: Write Tests — Repository", subagent_type="general-purpose", model="sonnet", prompt="...")
+Task(description="P1: Schema Setup", subagent_type="crafter:agent-no-test", prompt="...")
+Task(description="P1: Config Setup", subagent_type="crafter:agent-no-test", prompt="...")
 ```
 
 ---
 
-## Remediation Issue Creation
+## Remediation Yak Creation
 
-When Agent 3 (Validate) reports failures, create new beads issues to handle remediation.
+When Agent 3 (Validate) reports failures, create new yaks under the same phase group parent to handle remediation.
 
 ### Procedure
 
-1. **Create remediation issue:**
-   ```
-   beads:create
-   Title: P{N}: Remediate — {Phase Name} (attempt {M})
-   Label: agent-remediate, rpi-phase
-   Description: (see template below)
-   Blocked-by: {validate issue id}
+1. **Create remediation yak:**
+   ```bash
+   yx add "04-remediate-attempt-1" --under "P2-Core-Logic" --field "agent-type=agent-remediate"
+   echo "{remediation context}" | yx context "04-remediate-attempt-1"
    ```
 
-2. **Create re-validation issue:**
-   ```
-   beads:create
-   Title: P{N}: Re-Validate — {Phase Name} (attempt {M})
-   Label: agent-validate, rpi-phase
-   Blocked-by: {remediation issue id}
+2. **Create re-validation yak:**
+   ```bash
+   yx add "05-revalidate-attempt-1" --under "P2-Core-Logic" --field "agent-type=agent-validate"
+   echo "{revalidation context}" | yx context "05-revalidate-attempt-1"
    ```
 
-3. **Rewire dependencies:**
-   - The next phase's first issue should now be blocked-by the re-validation issue
-   - Use `beads:dep` to update the dependency
+3. **Mark the original validate yak as done** — it completed its job (reporting failures):
+   ```bash
+   yx done "03-validate"
+   ```
 
-4. **Close the original validate issue** — it completed its job (reporting failures)
+4. The sequential naming (`04-`, `05-`) ensures remediation runs next, then re-validation
 
-### Remediation Issue Description Template
+### Remediation Yak Context Template
 
 ```markdown
-## Agent Task: Remediate — {Phase Name} (Phase {N}, attempt {M})
+## Agent Task: Remediate — {Phase Name} (attempt {M})
 
 **Role:** Fix the implementation to make all tests pass. Do NOT modify test files.
 
@@ -195,41 +200,40 @@ When Agent 3 (Validate) reports failures, create new beads issues to handle reme
 ### Escalation
 
 If attempt count reaches 2 and re-validation still fails:
-1. Update the re-validation issue to `blocked` status via `beads:update`
-2. Report the failure to the user with full context
-3. Wait for user guidance before proceeding
+1. Report the failure to the user with full context
+2. Wait for user guidance before proceeding
 
 ---
 
 ## Progress Reporting
 
-### After Each Issue Closes
+### After Each Yak Completes
 
-Report the issue closure and overall epic progress:
+Report the completion and overall epic progress:
 
 ```markdown
-**Closed:** P2: Write Tests — Core Logic
-**Next:** P2: Implement — Core Logic (now unblocked)
+**Done:** P2-Core-Logic / 01-write-tests
+**Next:** P2-Core-Logic / 02-implement (now ready)
 
-**Epic Progress:** 3/12 issues closed
+**Epic Progress:** 3/12 tasks done
 ```
 
 ### Periodic Summary
 
-Use `beads:list` to show full epic status:
+Use `yx list` to show full epic status:
 
 ```markdown
 **Progress Update:**
-- [closed] P1: Apply Schema
-- [closed] P2: Write Tests — Core Logic
-- [closed] P2: Implement — Core Logic
-- [open]  P2: Validate — Core Logic (dispatched)
-- [open]  P3: Repository Layer (blocked by P2-Validate)
-- [open]  P4: Write Tests — Apply Discount (blocked by P3)
-- [open]  P4: Implement — Apply Discount (blocked by P4-Write-Tests)
-- [open]  P4: Validate — Apply Discount (blocked by P4-Implement)
+- [done] P1-Schema-Setup
+- [done] P2-Core-Logic / 01-write-tests
+- [done] P2-Core-Logic / 02-implement
+- [wip]  P2-Core-Logic / 03-validate (dispatched)
+- [todo] P3-Repository-Layer (waiting for P2)
+- [todo] P4-Apply-Discount / 01-write-tests (waiting for P3)
+- [todo] P4-Apply-Discount / 02-implement
+- [todo] P4-Apply-Discount / 03-validate
 
-**Progress:** 3/8 issues closed (37%)
+**Progress:** 3/8 tasks done (37%)
 ```
 
 ---
@@ -240,24 +244,24 @@ Use `beads:list` to show full epic status:
 
 If tests pass immediately (before implementation):
 1. **STOP** — the test is not testing new behavior
-2. **Do NOT close the issue** — leave it open
+2. **Do NOT mark the yak as done** — leave it
 3. **Report to user** — explain that tests pass without implementation
 4. **Do NOT dispatch Agent 2** — the phase is broken
 
 ### If Phase Cannot Be Completed
 
 If a phase cannot be completed after remediation:
-1. **Update the issue to blocked** via `beads:update`
-2. **Document the issue** in a comment via `beads:comments`
-3. **Ask for guidance** — should we adjust the approach?
-4. **Don't skip ahead** — beads dependency graph prevents this automatically
+1. **Report to user** with full failure context
+2. **Ask for guidance** — should we adjust the approach?
+3. **Don't skip ahead** — the naming convention prevents this (lower numbers must complete first)
 
-### If Beads State is Inconsistent
+### If Yaks State is Inconsistent
 
-If `beads:ready` returns no tasks but open tasks remain:
-1. Check `beads:blocked` to see what's stuck
-2. Look for circular dependencies or missing closures
-3. Report to user with the blocked issue details
+If readiness computation returns no tasks but non-done tasks remain:
+1. Check `yx list --format json` for the full tree
+2. Look for phase groups where all children are done but the parent isn't
+3. Mark completed parents as done: `yx done "{parent name}"`
+4. Report to user with details
 
 ---
 
@@ -266,11 +270,11 @@ If `beads:ready` returns no tasks but open tasks remain:
 Recovery requires no special logic:
 
 1. User runs `/craft` in a new session
-2. Identify the epic (user provides name or use `beads:search`)
-3. Run `beads:ready` — returns exactly the next dispatchable tasks
+2. Identify the epic (user provides name or check `yx list`)
+3. Compute readiness from `yx list --format json` — returns exactly the next dispatchable tasks
 4. Resume the orchestration loop from Step 2
 
-Closed issues represent completed work (files already on disk). The orchestration loop picks up seamlessly.
+Done yaks represent completed work (files already on disk). The orchestration loop picks up seamlessly.
 
 ---
 
@@ -286,17 +290,17 @@ Closed issues represent completed work (files already on disk). The orchestratio
 - [ ] Implementation written by Agent 2 guided only by test expectations
 - [ ] Uses existing patterns from project CLAUDE.md
 - [ ] Minimal code to pass tests
-- [ ] Respects architectural constraints from issue description
+- [ ] Respects architectural constraints from yak context
 
 ### Phase Verification
 - [ ] Each phase validated by Agent 3 before proceeding
 - [ ] Full test suite passes (not just new tests)
 - [ ] Remediation attempts tracked (max 2 per phase)
-- [ ] Issues closed only after gates pass
+- [ ] Yaks marked done only after gates pass
 
 ## Final Verification Template
 
-Use this template after all issues in the epic are closed:
+Use this template after all yaks in the epic are done:
 
 ```markdown
 ## Final Verification
@@ -318,11 +322,11 @@ From epic:
 | Phase | Write Test | Implement | Validate | Remediations |
 |-------|-----------|-----------|----------|--------------|
 | 1     | n/a       | n/a       | n/a      | 0 (no-test)  |
-| 2     | closed    | closed    | closed   | 0            |
+| 2     | done      | done      | done     | 0            |
 | 3     | n/a       | n/a       | n/a      | 0 (no-test)  |
 | ...   | ...       | ...       | ...      | ...          |
 
-**Total issues:** {count}
+**Total tasks:** {count}
 **Remediations:** {count}
 **Session recoveries:** {count}
 
@@ -330,7 +334,7 @@ From epic:
 
 ## Implementation Complete
 
-All beads issues closed:
+All yaks done:
 - All tests passing
 - All acceptance criteria met
 - No test skips

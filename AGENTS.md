@@ -2,7 +2,17 @@
 
 This project is a Claude Code plugin marketplace containing **skills** — structured markdown workflow documents. There is no application code or build system. Skills are validated by a three-layer test pipeline (see Testing Skills below).
 
-For project architecture, key concepts (RPI methodology, testing philosophy, hexagonal architecture), and installation commands, see `docs/architecture.md`.
+For project architecture, key concepts (RPI methodology, testing philosophy, hexagonal architecture), artifact lifecycle, and installation commands, see `docs/architecture.md`.
+
+## Core Workflow (Plan Mode Native)
+
+The primary workflow aligns with Claude Code's native plan mode:
+
+1. **Research** (outside plan mode) — Assess complexity, dispatch parallel subagents if warranted, write temporary artifact to `.claude/scratch/`
+2. **Plan** (inside plan mode) — Draft behavior activates, produces plan summarizing research with Agent Context blocks
+3. **Execute** (`/craft`) — Creates yaks task graph from approved plan, runs three-agent TDD orchestration, writes session artifact to `.claude/sessions/`
+4. **Post-execution** — code-review, simplify, reflect recommendations
+5. **Reflect** (`/reflect`) — Optional post-session learning loop
 
 ## Creating New Skills
 
@@ -110,7 +120,7 @@ Claude receives the fully-rendered prompt with actual data.
 
 Skills are validated across three layers. Each layer catches different failure modes.
 
-**Layer 1 — Deterministic (local + CI).** Validates structure, frontmatter, triggers, and scenario schemas. No API calls. Runs on every push via `.github/workflows/test-skills.yml`. Must pass before shipping.
+**Layer 1 — Deterministic (local).** Validates structure, frontmatter, triggers, and scenario schemas. No API calls. Must pass before shipping.
 
 ```bash
 bash tests/local/validate-skills.sh
@@ -194,15 +204,18 @@ Watch for these during testing:
 
 ## Issue Tracking
 
-This project uses **bd** (beads) for issue tracking.
+This project uses **yx** (yaks) for issue tracking — a git-native, CRDT-based CLI tool.
 
 ```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --status in_progress  # Claim work
-bd close <id>         # Complete work
-bd sync               # Sync with git
+yx list               # Show all yaks (tasks)
+yx list --format json # Machine-readable output for agents
+yx show <name>        # View yak details
+yx start <name>       # Mark as work-in-progress
+yx done <name>        # Mark complete
+yx sync               # Sync with git remote
 ```
+
+Install: `curl -fsSL https://raw.githubusercontent.com/mattwynne/yaks/main/install.sh | bash`
 
 ## Session Completion
 
@@ -210,7 +223,7 @@ When ending a work session, all changes MUST be pushed to remote:
 
 ```bash
 git pull --rebase
-bd sync
+yx sync
 git push
 git status  # Must show "up to date with origin"
 ```

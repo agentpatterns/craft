@@ -75,6 +75,12 @@ out/
 .env.*.local
 .envrc
 
+# Claude Code
+.claude/scratch/
+
+# Yaks (issue tracker read model)
+.yaks
+
 # OS
 .DS_Store
 Thumbs.db

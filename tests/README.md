@@ -2,7 +2,7 @@
 
 Test scenarios for the skills in this plugin. The testable units are markdown workflow documents whose behaviors are evaluated by running them with Claude.
 
-Derived from AGENTS.md and research findings in `docs/plans/2026-02-23-skill-testing-research.md` (Findings 1-5).
+Derived from AGENTS.md and skill testing research findings.
 
 ### Three Testing Areas
 
@@ -48,7 +48,7 @@ Prefer higher-certainty methods (Finding 2).
 
 ### Layer 1 — Deterministic (Local)
 
-Fast structural and trigger validation. No API calls. Runs in CI on every push and PR.
+Fast structural and trigger validation. No API calls.
 
 ```bash
 bash tests/local/validate-skills.sh

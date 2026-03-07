@@ -53,7 +53,7 @@ triggering:
 
     # Should trigger craft/draft instead (feature execution, not doc audit)
     - "implement the discount codes feature from the plan"
-    - "execute the beads task graph for the OAuth work"
+    - "execute the yaks task graph for the OAuth work"
     - "build the webhook system from the draft plan"
 
     # Ambiguous: "fix" on code, not docs

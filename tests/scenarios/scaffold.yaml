@@ -47,7 +47,7 @@ triggering:
 
     # Should trigger craft instead (executing from an existing plan)
     - "implement the feature from the draft plan we created"
-    - "execute the task graph from the beads plan file"
+    - "execute the task graph from the yaks task graph"
     - "build the payment service according to the plan we already have"
 
     # Should trigger tdd instead (writing tests, not scaffolding structure)

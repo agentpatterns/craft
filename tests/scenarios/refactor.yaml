@@ -49,7 +49,7 @@ triggering:
     - "write a roadmap for the OAuth integration feature"
 
     # Should trigger craft instead (executing a feature plan)
-    - "implement the feature from the beads task graph"
+    - "implement the feature from the yaks task graph"
     - "execute the implementation plan we drafted yesterday"
     - "build out the discount validator as described in the plan"
 

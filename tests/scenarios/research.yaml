@@ -40,7 +40,7 @@ triggering:
 
     # Should trigger craft instead (execution, not exploration)
     - "execute the plan from the draft skill"
-    - "implement the feature from the beads task graph"
+    - "implement the feature from the yaks task graph"
     - "build from the plan we created yesterday"
 
     # Should trigger tdd instead (test-writing, not exploration)
@@ -126,6 +126,6 @@ functional:
       - "Skill presents the Research Complete block with artifact path and ordered next steps"
       - "Skill does NOT invoke /draft or create any plan file"
       - "Skill does NOT write any code files"
-      - "Skill does NOT create any beads issues or task graphs"
+      - "Skill does NOT create any yaks tasks or task graphs"
       - "No further tool calls occur after the next-steps output is presented"
     notes: "This tests the phase boundary enforcement. Sonnet and Opus typically respect the STOP instruction; Haiku may continue"

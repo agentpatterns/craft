@@ -2,7 +2,7 @@
 
 ## Plan File Role
 
-The plan file at `docs/plans/YYYY-MM-DD-{topic}-plan.md` is a **human-readable audit trail** — useful for code review, PR descriptions, and understanding the feature's design after the fact. It is NOT read by `/craft` during execution. The beads task graph is the runtime source of truth.
+The plan lives in the Claude Code session plan file during planning. It is NOT read by `/craft` during execution — yak contexts are self-contained. The persistent session artifact (combining research, plan, and execution log) is written by `/craft` to `.claude/sessions/` at the end of execution.
 
 ## Template Structure
 
@@ -11,7 +11,7 @@ The plan file at `docs/plans/YYYY-MM-DD-{topic}-plan.md` is a **human-readable a
 
 **Date:** YYYY-MM-DD
 **Status:** Plan - Ready for Review
-**Beads Epic:** {epic name}
+**Yaks Epic:** {epic name}
 
 ## Goal
 
@@ -229,9 +229,9 @@ Before implementing, verify:
 ## Next Steps
 
 After human review and approval:
-1. Run `/craft` to execute — dispatches agents from beads issues
+1. Run `/craft` to execute — dispatches agents from yaks task graph
 2. Each TDD phase: Agent 1 writes failing tests → Agent 2 implements → Agent 3 validates
-3. If interrupted, `/craft` picks up where it left off via `beads:ready`
+3. If interrupted, `/craft` picks up where it left off via readiness computation
 ```
 
 ---
@@ -269,11 +269,11 @@ Each implementation phase MUST include an `#### Agent Context` subsection. This 
 Specify properties to test, not examples:
 
 ```
-✅ GOOD - behavioral property description:
+GOOD - behavioral property description:
 "Splitting a total into N parts preserves the total — sum of parts equals original"
 "Discount percentage applied to any positive price produces a result strictly less than the original"
 
-❌ BAD - hardcoded example:
+BAD - hardcoded example:
 "split(100, 4) returns [25, 25, 25, 25]"
 ```
 
@@ -282,11 +282,11 @@ Specify properties to test, not examples:
 Specify behavior at the use case boundary:
 
 ```
-✅ GOOD - behavioral specification:
+GOOD - behavioral specification:
 "Given a valid order with items, creating the order returns success with an order ID and correct total"
 "Given an expired discount code, applying it returns an error with reason 'expired'"
 
-❌ BAD - implementation specification:
+BAD - implementation specification:
 "mockRepository.create is called with the order data"
 ```
 
@@ -295,11 +295,11 @@ Specify behavior at the use case boundary:
 Specify the HTTP contract:
 
 ```
-✅ GOOD - contract specification:
+GOOD - contract specification:
 "POST /orders with valid body returns 201 with { id: string, total: number }"
 "POST /orders with missing items returns 400 with { error: string }"
 
-❌ BAD - internal behavior:
+BAD - internal behavior:
 "createOrderHandler is called"
 ```
 
@@ -352,20 +352,21 @@ Each phase should:
 - [ ] Verification steps are concrete and observable
 - [ ] Ready to hand off to `/craft`
 
-### Beads Integration
-- [ ] Epic created with feature name
-- [ ] Each agent step has its own beads issue
-- [ ] Issue descriptions are self-contained (no plan file reference needed)
-- [ ] Dependencies wired (TDD triplets sequential, cross-phase ordering)
-- [ ] Labels applied (rpi-phase, agent-test/agent-impl/agent-validate/no-test, L3/L4)
+### Yaks Integration
+- [ ] Epic yak created with feature name
+- [ ] Each agent step has its own yak with context piped in
+- [ ] Yak contexts are self-contained (no plan file reference needed)
+- [ ] Phase groups named with P{N} prefix for ordering
+- [ ] Children named with NN- prefix for sequential execution
+- [ ] Custom fields set: agent-type (agent-test/agent-impl/agent-validate/no-test)
 
 ---
 
-## Beads Issue Description Templates
+## Yak Context Templates
 
-Each beads issue description MUST be self-contained — everything an agent needs to execute without reading the plan file. Use these templates when creating issues in Step 3b.
+Each yak's context MUST be self-contained — everything an agent needs to execute without reading the plan file. Use these templates when piping context in Step 5.
 
-### Write Tests Issue (agent-test)
+### Write Tests Yak (agent-test)
 
 ```markdown
 ## Agent Task: Write Tests — {Phase Name} (Phase {N})
@@ -392,7 +393,7 @@ Each beads issue description MUST be self-contained — everything an agent need
 - RED gate status: PASS (tests fail as expected) or FAIL
 ```
 
-### Implement Issue (agent-impl)
+### Implement Yak (agent-impl)
 
 ```markdown
 ## Agent Task: Implement — {Phase Name} (Phase {N})
@@ -419,7 +420,7 @@ Each beads issue description MUST be self-contained — everything an agent need
 - GREEN gate status: PASS or FAIL
 ```
 
-### Validate Issue (agent-validate)
+### Validate Yak (agent-validate)
 
 ```markdown
 ## Agent Task: Validate — {Phase Name} (Phase {N})
@@ -441,7 +442,7 @@ Each beads issue description MUST be self-contained — everything an agent need
 - Failures: [count and details]
 ```
 
-### No-Test Issue (no-test)
+### No-Test Yak (no-test)
 
 ```markdown
 ## Agent Task: {Task Name} (Phase {N})
@@ -461,11 +462,12 @@ Each beads issue description MUST be self-contained — everything an agent need
 
 ### Report
 - Files created/modified: [list paths]
-- Command output: [paste]
-- Acceptance gate status: PASS or FAIL
+- Task completed: [brief description]
+- Acceptance gate: PASS or FAIL
+- Details: [any relevant output or notes]
 ```
 
-### Remediation Issue (agent-remediate)
+### Remediation Yak (agent-remediate)
 
 Created dynamically by `/craft` when validation fails. Not created during `/draft`.
 

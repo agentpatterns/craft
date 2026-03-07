@@ -106,9 +106,9 @@ Run frequency recommendations:
 | research-05 | research | Hard stop after next-steps output | llm-judge |
 | draft-01 | draft | Valid plan file with all required sections | code |
 | draft-02 | draft | Agent Context blocks in every TDD phase | code |
-| draft-03 | draft | TDD phases decomposed into 3 beads issues | llm-judge |
-| draft-04 | draft | Self-contained beads issue descriptions | llm-judge |
-| draft-05 | draft | Inline task graph fallback when beads unavailable | code |
+| draft-03 | draft | TDD phases decomposed into 3 yaks tasks | llm-judge |
+| draft-04 | draft | Self-contained yaks task descriptions | llm-judge |
+| draft-05 | draft | Inline task graph fallback when yaks unavailable | code |
 | craft-01 | craft | craft-execution-log.md created with structured entries | code |
 | craft-02 | craft | Full gate pass path (RED, GREEN, VALIDATE) | code |
 | craft-03 | craft | RED gate fail hard stop | llm-judge |

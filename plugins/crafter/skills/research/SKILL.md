@@ -1,12 +1,12 @@
 ---
 name: research
-description: Research phase of RPI methodology. Spawns parallel subagents for codebase exploration AND web/pattern research, then synthesizes findings for user review. Produces a compact research artifact at docs/plans/YYYY-MM-DD-{topic}-research.md. Use before implementing non-trivial features to understand what already exists.
+description: Research phase of RPI methodology. Spawns parallel subagents for codebase exploration AND web/pattern research, then synthesizes findings for user review. Produces a temporary research artifact at .claude/scratch/ and transitions into plan mode. Use before implementing non-trivial features to understand what already exists.
 triggers:
   - "research the codebase"
   - "explore codebase"
   - "investigate the code"
   - "research before implementing"
-allowed-tools: Read Glob Grep Task TaskOutput WebSearch WebFetch AskUserQuestion Write Bash(plannotator:*)
+allowed-tools: Read Glob Grep Task TaskOutput WebSearch WebFetch AskUserQuestion Write EnterPlanMode Bash(plannotator:*)
 ---
 
 # Research Skill
@@ -18,8 +18,8 @@ Use this skill at the start of non-trivial features to explore the codebase AND 
 ## Phase Contract
 
 **Receives:** User's feature description (or codebase context from previous conversation)
-**Produces:** Research artifact at `docs/plans/YYYY-MM-DD-{topic}-research.md` (~200 lines)
-**Hands off to:** `/draft` — pass the artifact path as input
+**Produces:** Temporary research artifact at `.claude/scratch/{topic}-research.md` (~200 lines)
+**Hands off to:** Plan mode — entering plan mode is the context compaction boundary where draft behavior activates
 
 ## Purpose
 
@@ -30,7 +30,7 @@ The Research phase prevents thrashing and discovers constraints early by:
 - Understanding dependencies and integration points
 - Uncovering constraints before they become blockers
 
-**Output:** Compact research artifact (~200 lines) at `docs/plans/YYYY-MM-DD-{topic}-research.md`
+**Output:** Temporary research artifact (~200 lines) at `.claude/scratch/{topic}-research.md`
 
 ## When to Use
 
@@ -100,18 +100,6 @@ Two agent types — see [agent prompts](references/agent-prompts.md) for full te
 - Uses WebSearch/WebFetch to consult 2-4 sources
 - Reports findings with **High/Medium/Low** confidence levels
 
-Example dispatch for "Add discount codes to orders":
-
-```
-# ALL in a single message:
-Task(Explore): "Investigate existing discount logic in core/ and features/"
-Task(Explore): "Investigate order creation flow end-to-end"
-Task(Explore): "Investigate validation patterns for codes/slugs"
-Task(Explore): "Investigate database schema for orders and related tables"
-Task(general-purpose): "Research discount/coupon code validation patterns and best practices"
-Task(general-purpose): "Research Stripe coupon API integration patterns"
-```
-
 ### 3. Collect Agent Results
 
 - Poll agents with `TaskOutput block: false` to check progress
@@ -129,7 +117,7 @@ Cross-reference codebase patterns against web findings:
 
 Write the research artifact **immediately** to disk:
 ```
-docs/plans/YYYY-MM-DD-{topic}-research.md
+.claude/scratch/{topic}-research.md
 ```
 
 Use the [research artifact template](references/template.md). Target ~200 lines. Use kebab-case for the topic slug — make it descriptive of the feature (e.g., `add-discount-codes`, `user-auth-refresh-tokens`).
@@ -144,73 +132,49 @@ Bash: plannotator --version
 ```
 
 **If plannotator is available:**
-Run `plannotator annotate docs/plans/YYYY-MM-DD-{topic}-research.md` via Bash. This opens the artifact in a browser annotation UI and blocks until the user submits.
+Run `plannotator annotate .claude/scratch/{topic}-research.md` via Bash. This opens the artifact in a browser annotation UI and blocks until the user submits.
 - **Non-empty annotations returned:** Address each annotation by updating the artifact with `Write`, then re-run `plannotator annotate` on the same file. Repeat until empty annotations.
 - **Empty annotations returned:** The user is satisfied. Proceed to Step 6.
 
 **If plannotator is not available (command not found):**
 Fall back to `AskUserQuestion`: present a summary of key findings (3-5 bullet points) and the artifact path. If the user requests edits → update the artifact with `Write`, then ask again. Repeat until approved.
 
-### 6. Prompt Next Steps and STOP
+### 6. Transition to Plan Mode
 
 Use `AskUserQuestion` to present the following options:
 
 ```
-Research complete. Artifact saved: `docs/plans/YYYY-MM-DD-{topic}-research.md`
+Research complete. Artifact saved: `.claude/scratch/{topic}-research.md`
 
 What would you like to do next?
 
-1. I'll run /clear then /draft — start planning (recommended)
+1. Enter plan mode — begin planning (recommended)
 2. Request more research — describe what else to investigate
 3. Edit the artifact — describe changes and I'll update it
-
-> Why /clear? Research-phase context (agent outputs, file reads, web fetches) pollutes the planning phase. Clearing ensures /draft works from the compact artifact alone.
 ```
 
-Replace `YYYY-MM-DD-{topic}` with the actual artifact path.
+Replace `{topic}` with the actual artifact path.
 
-- **Option 1:** STOP. Do not invoke /draft — the user will do it after /clear.
+- **Option 1:** Call `EnterPlanMode`. This transitions into the planning phase where draft behavior activates. The plan mode entry IS the context compaction boundary — it replaces the old `/clear` ritual. The research artifact at `.claude/scratch/` will be read during planning.
 - **Option 2:** Return to Step 2 (dispatch additional agents), then repeat Steps 4-6.
 - **Option 3:** Update artifact with `Write`, then re-present Step 6 options.
 
-**Then STOP. Do not take any further actions. The research phase is complete.**
-
-## STOP — Phase Complete
-
-**After the user selects option 1, your job is DONE.**
-
-- Do NOT proceed to planning or implementation
-- Do NOT invoke /draft or /craft
-- Do NOT write any code files
-- Do NOT create any plans or task graphs
-- Then STOP responding
-
-The next phases happen in separate conversations with clean context windows.
+**After entering plan mode, STOP. Draft behavior takes over inside plan mode.**
 
 ## Anti-Patterns to Avoid
 
 - **Don't copy entire files** — note file paths and purpose only
 - **Don't write code yet** — this is research, not implementation
-- **Don't create plans** — that's the next phase (`/draft`)
+- **Don't create plans** — that happens in plan mode (draft behavior)
 - **Don't research sequentially** — use parallel agents dispatched in a single message
 - **Don't include irrelevant details** — stay focused on the feature
 - **Don't present web findings without confidence levels** — every web finding needs High/Medium/Low
 - **Don't trust a single web source** — cross-reference when possible
-
-## After Research
-
-Once research is complete:
-1. Artifact is written to `docs/plans/` immediately after synthesis
-2. User reviews summary and requests edits via `AskUserQuestion`
-3. Clear context window with `/clear`
-4. Run `/draft` with the research artifact path as input
-5. Research artifact serves as the sole context for planning
 
 ## Context Compaction
 
 **Why research first?** The research phase is a compaction point:
 - **Before research:** Entire codebase + unbounded web knowledge (too much context)
 - **After research:** Compact artifact (~200 lines, only relevant details from both sources)
-- **Planning phase** works from compact artifact, not raw codebase or web searches
-
-This prevents context thrashing and keeps planning focused.
+- **Plan mode** works from compact artifact, not raw codebase or web searches
+- **Entering plan mode** is the boundary — research context stays behind, only the artifact carries forward

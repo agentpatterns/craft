@@ -24,7 +24,7 @@ triggering:
     - "turn the research findings into a plan"
 
     # Phrases aligned with "produces Agent Context blocks" intent
-    - "create a plan with beads issues for the team to execute"
+    - "create a plan with yaks tasks for the team to execute"
     - "write a plan for this feature with phases and test specs"
 
     # Phrases aligned with "start planning a non-trivial feature" (no prior research)
@@ -42,7 +42,7 @@ triggering:
 
     # Should trigger craft instead (execution, not planning)
     - "execute the implementation plan"
-    - "implement the feature from the beads task graph"
+    - "implement the feature from the yaks task graph"
     - "run the craft skill to build out the phases"
 
     # Should trigger tdd instead (writing tests directly, not planning)
@@ -100,43 +100,43 @@ functional:
     notes: "Agent Context blocks are the contract between draft and craft — missing fields cause craft to fail"
 
   - id: draft-03
-    description: TDD phases are decomposed into exactly 3 beads issues (Write Tests, Implement, Validate)
+    description: TDD phases are decomposed into exactly 3 yaks tasks (Write Tests, Implement, Validate)
     grading: llm-judge
     given: |
-      A project where beads is available (beads:search returns results without error).
+      A project where yaks is available (yx list returns results without error).
       Research artifact describes a feature with at least one TDD layer.
     when: "plan the implementation of a discount code feature with TDD phases"
     then:
-      - "Beads epic is created for the feature"
-      - "Each TDD phase produces exactly 3 beads issues: Write Tests, Implement, Validate"
+      - "Yaks epic is created for the feature"
+      - "Each TDD phase produces exactly 3 yaks tasks: Write Tests, Implement, Validate"
       - "Write Tests issue is blocked by previous phase completion"
       - "Implement issue is blocked by Write Tests issue"
       - "Validate issue is blocked by Implement issue"
-      - "Non-TDD phases (schema, infrastructure) produce exactly 1 beads issue"
-    notes: "Verify via beads:list after plan completes. Haiku may create fewer issues or skip dependencies"
+      - "Non-TDD phases (schema, infrastructure) produce exactly 1 yak"
+    notes: "Verify via yx list after plan completes. Haiku may create fewer tasks or skip dependencies"
 
   - id: draft-04
-    description: Each beads issue description is self-contained and does not reference the plan file
+    description: Each yak context is self-contained and does not reference the plan file
     grading: llm-judge
     given: |
-      A project where beads is available. Draft has completed and created a beads epic with issues.
+      A project where yaks is available. Draft has completed and created a yaks epic with tasks.
     when: "draft a plan for adding webhook support to the notification system"
     then:
-      - "Each beads issue description contains full Agent Context inline (not a link to the plan file)"
-      - "No beads issue body contains a phrase like 'see plan file', 'refer to docs/plans/', or 'as described in the plan'"
-      - "An agent reading only the beads issue could execute the phase without accessing docs/plans/"
-    notes: "Self-containment is critical for craft's isolated agent dispatch. Issues referencing the plan file are a known failure mode"
+      - "Each yak context contains full Agent Context inline (not a link to the plan file)"
+      - "No yak context contains a phrase like 'see plan file', 'refer to docs/plans/', or 'as described in the plan'"
+      - "An agent reading only the yak context could execute the phase without accessing docs/plans/"
+    notes: "Self-containment is critical for craft's isolated agent dispatch. Tasks referencing the plan file are a known failure mode"
 
   - id: draft-05
-    description: Falls back to inline task graph when beads is unavailable
+    description: Falls back to inline task graph when yaks is unavailable
     grading: code
     given: |
-      A project where beads is NOT available (beads:search returns a tool-not-found error or similar).
+      A project where yaks is NOT available (yx list returns a command-not-found error).
     when: "plan the implementation of user profile photo uploads"
     then:
       - "Plan file contains section: ## Inline Task Graph"
       - "Inline task graph lists each agent step as a headed subsection (e.g., ### P1: ...)"
       - "Each inline step includes the full Agent Context block"
       - "Each inline step includes blocked-by dependency notation"
-      - "No attempt to create beads issues after beads availability check fails"
-    notes: "The fallback path is exercised only when beads:search fails — test in an environment without the beads plugin"
+      - "No attempt to create yaks after yaks availability check fails"
+    notes: "The fallback path is exercised only when yx list fails — test in an environment without the yaks CLI"
