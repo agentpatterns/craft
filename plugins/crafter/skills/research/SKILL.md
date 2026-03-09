@@ -1,6 +1,6 @@
 ---
 name: research
-description: Research phase of RPI methodology. Spawns parallel subagents for codebase exploration AND web/pattern research, then synthesizes findings for user review. Produces a temporary research artifact at .claude/scratch/ and transitions into plan mode. Use before implementing non-trivial features to understand what already exists.
+description: Research phase of RPI methodology. Spawns parallel subagents for codebase exploration AND web/pattern research, then synthesizes findings for user review. Produces a temporary research artifact at .crafter/scratch/ and transitions into plan mode. Use before implementing non-trivial features to understand what already exists.
 triggers:
   - "research the codebase"
   - "explore codebase"
@@ -18,7 +18,7 @@ Use this skill at the start of non-trivial features to explore the codebase AND 
 ## Phase Contract
 
 **Receives:** User's feature description (or codebase context from previous conversation)
-**Produces:** Temporary research artifact at `.claude/scratch/{topic}-research.md` (~200 lines)
+**Produces:** Temporary research artifact at `.crafter/scratch/{topic}-research.md` (~200 lines)
 **Hands off to:** Plan mode — entering plan mode is the context compaction boundary where draft behavior activates
 
 ## Purpose
@@ -30,7 +30,7 @@ The Research phase prevents thrashing and discovers constraints early by:
 - Understanding dependencies and integration points
 - Uncovering constraints before they become blockers
 
-**Output:** Temporary research artifact (~200 lines) at `.claude/scratch/{topic}-research.md`
+**Output:** Temporary research artifact (~200 lines) at `.crafter/scratch/{topic}-research.md`
 
 ## When to Use
 
@@ -117,7 +117,7 @@ Cross-reference codebase patterns against web findings:
 
 Write the research artifact **immediately** to disk:
 ```
-.claude/scratch/{topic}-research.md
+.crafter/scratch/{topic}-research.md
 ```
 
 Use the [research artifact template](references/template.md). Target ~200 lines. Use kebab-case for the topic slug — make it descriptive of the feature (e.g., `add-discount-codes`, `user-auth-refresh-tokens`).
@@ -132,7 +132,7 @@ Bash: plannotator --version
 ```
 
 **If plannotator is available:**
-Run `plannotator annotate .claude/scratch/{topic}-research.md` via Bash. This opens the artifact in a browser annotation UI and blocks until the user submits.
+Run `plannotator annotate .crafter/scratch/{topic}-research.md` via Bash. This opens the artifact in a browser annotation UI and blocks until the user submits.
 - **Non-empty annotations returned:** Address each annotation by updating the artifact with `Write`, then re-run `plannotator annotate` on the same file. Repeat until empty annotations.
 - **Empty annotations returned:** The user is satisfied. Proceed to Step 6.
 
@@ -144,7 +144,7 @@ Fall back to `AskUserQuestion`: present a summary of key findings (3-5 bullet po
 Use `AskUserQuestion` to present the following options:
 
 ```
-Research complete. Artifact saved: `.claude/scratch/{topic}-research.md`
+Research complete. Artifact saved: `.crafter/scratch/{topic}-research.md`
 
 What would you like to do next?
 
@@ -155,7 +155,7 @@ What would you like to do next?
 
 Replace `{topic}` with the actual artifact path.
 
-- **Option 1:** Call `EnterPlanMode`. This transitions into the planning phase where draft behavior activates. The plan mode entry IS the context compaction boundary — it replaces the old `/clear` ritual. The research artifact at `.claude/scratch/` will be read during planning.
+- **Option 1:** Call `EnterPlanMode`. This transitions into the planning phase where draft behavior activates. The plan mode entry IS the context compaction boundary — it replaces the old `/clear` ritual. The research artifact at `.crafter/scratch/` will be read during planning.
 - **Option 2:** Return to Step 2 (dispatch additional agents), then repeat Steps 4-6.
 - **Option 3:** Update artifact with `Write`, then re-present Step 6 options.
 

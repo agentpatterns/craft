@@ -1,19 +1,44 @@
 # Craft Implement: Workflow Details
 
-This reference provides detailed templates, examples, and procedures for executing the yaks-driven implementation workflow.
+This reference provides detailed templates, examples, and procedures for executing the task-graph-driven implementation workflow across all three tracker modes (YAKS, BEADS, NATIVE).
 
-## Agent Dispatch from Yaks
+## Agent Dispatch
 
-Each yak contains a self-contained agent task description in its context. The craft orchestrator reads the context via `yx context "{yak name}"` and uses it to build the agent prompt. No plan file reading is needed.
+Each task contains a self-contained agent task description in its context. The craft orchestrator reads the context via the tracker-specific command and uses it to build the agent prompt. No plan file reading is needed.
 
 ### Building Agent Prompts
 
-For each ready yak (from readiness computation):
+For each ready task (from readiness computation), read the task context using the appropriate tracker command:
 
-1. Run `yx context "{yak name}"` to get the full agent context
-2. The context follows the self-contained format from `/draft` (see draft template.md)
-3. Dispatch via `Task` tool using the registered agent type matching the yak's `agent-type` field
-4. The agent receives the yak context as its prompt — its system prompt is defined in the plugin's `agents/` directory
+#### YAKS
+
+```bash
+yx context "{task name}"
+```
+
+#### BEADS
+
+```
+Skill: beads:show {issue-id}
+```
+
+Reads agent context from the issue description.
+
+#### NATIVE
+
+```
+TaskGet: { id: "{task-id}" }
+```
+
+Reads agent context from the description field.
+
+---
+
+After reading the context:
+
+1. The context follows the self-contained format from `/draft` (see draft template.md)
+2. Dispatch via `Task` tool using the registered agent type matching the task's `agent-type` field
+3. The agent receives the task context as its prompt — its system prompt is defined in the plugin's `agents/` directory
 
 ### Agent Dispatch Table
 
@@ -27,17 +52,17 @@ For each ready yak (from readiness computation):
 
 ### Dispatch Format
 
-For each agent dispatch, pass the yak context as the prompt:
+For each agent dispatch, pass the task context as the prompt:
 
 ```
 Task(
   description="P{N}: {Phase} — {agent role}",
   subagent_type="crafter:agent-test",  // or agent-impl, agent-validate, etc.
-  prompt="{yak_context}"
+  prompt="{task_context}"
 )
 ```
 
-The registered agents have their own system prompts defining role, rules, and report format. The yak context provides the task-specific context (file paths, test specs, gates, constraints).
+The registered agents have their own system prompts defining role, rules, and report format. The task context provides the task-specific context (file paths, test specs, gates, constraints).
 
 See `plugins/crafter/agents/` for the full agent definitions:
 - `agent-test.md` — RED gate: writes failing tests only
@@ -50,12 +75,14 @@ See `plugins/crafter/agents/` for the full agent definitions:
 
 ## Readiness Computation Algorithm
 
-The craft skill computes readiness from `yx list --format json` output. This replaces the external tracker's `ready` command.
+The craft skill computes readiness from the task list. In YAKS and NATIVE modes, this is an in-skill computation (see algorithm below). In BEADS mode, `Skill: beads:ready` returns the ready set directly.
 
-### Algorithm
+### YAKS
+
+Use `yx list --format json` to fetch the epic tree, then apply the algorithm:
 
 ```python
-# Pseudocode — the craft skill implements this logic
+# Pseudocode — applies to YAKS mode
 def compute_ready(epic_json):
     phase_groups = epic_json["children"]  # top-level children of the epic
 
@@ -96,9 +123,21 @@ def compute_ready(epic_json):
     return ready
 ```
 
+### BEADS
+
+```
+Skill: beads:ready
+```
+
+Returns the unblocked tasks directly — no in-skill computation needed.
+
+### NATIVE
+
+Use `TaskList` to fetch all tasks, then apply the same naming-convention algorithm as YAKS: extract the `P{N}` prefix from each task title, group by prefix, and return the first non-done tasks at the lowest incomplete prefix level. Parse `TaskList` output instead of yaks JSON.
+
 ### Example Walk-Through
 
-Given this yaks tree:
+Given this task tree:
 ```
 Epic: "Add Discount Codes"
   P1-Schema-Setup         [done]
@@ -143,32 +182,86 @@ Task(description="P1: Config Setup", subagent_type="crafter:agent-no-test", prom
 
 ---
 
-## Remediation Yak Creation
+## Remediation Task Creation
 
-When Agent 3 (Validate) reports failures, create new yaks under the same phase group parent to handle remediation.
+When Agent 3 (Validate) reports failures, create new tasks under the same phase group parent to handle remediation. The procedure is the same across all tracker modes — only the commands differ.
 
 ### Procedure
 
-1. **Create remediation yak:**
+1. **Create remediation task** (name: `04-remediate-attempt-{M}`, agent-type: `agent-remediate`):
+
+   #### YAKS
+
    ```bash
    yx add "04-remediate-attempt-1" --under "P2-Core-Logic" --field "agent-type=agent-remediate"
    echo "{remediation context}" | yx context "04-remediate-attempt-1"
    ```
 
-2. **Create re-validation yak:**
+   #### BEADS
+
+   ```
+   Skill: beads:create "04-remediate-attempt-1"
+   ```
+
+   Set parent to `P2-Core-Logic` and include the `agent-type=agent-remediate` field. Then:
+
+   ```
+   Skill: beads:dep "04-remediate-attempt-1" depends-on "03-validate"
+   ```
+
+   #### NATIVE
+
+   ```
+   TaskCreate: { title: "04-remediate-attempt-1", description: "{remediation context}" }
+   ```
+
+   Include the full remediation context (failure output, files to fix, instructions) in the description field.
+
+2. **Create re-validation task** (name: `05-revalidate-attempt-{M}`, agent-type: `agent-validate`):
+
+   #### YAKS
+
    ```bash
    yx add "05-revalidate-attempt-1" --under "P2-Core-Logic" --field "agent-type=agent-validate"
    echo "{revalidation context}" | yx context "05-revalidate-attempt-1"
    ```
 
-3. **Mark the original validate yak as done** — it completed its job (reporting failures):
+   #### BEADS
+
+   ```
+   Skill: beads:create "05-revalidate-attempt-1"
+   Skill: beads:dep "05-revalidate-attempt-1" depends-on "04-remediate-attempt-1"
+   ```
+
+   #### NATIVE
+
+   ```
+   TaskCreate: { title: "05-revalidate-attempt-1", description: "{revalidation context}" }
+   ```
+
+3. **Mark the original validate task as done** — it completed its job (reporting failures):
+
+   #### YAKS
+
    ```bash
    yx done "03-validate"
    ```
 
+   #### BEADS
+
+   ```
+   Skill: beads:close "03-validate"
+   ```
+
+   #### NATIVE
+
+   ```
+   TaskUpdate: { id: "{task-id}", status: "completed" }
+   ```
+
 4. The sequential naming (`04-`, `05-`) ensures remediation runs next, then re-validation
 
-### Remediation Yak Context Template
+### Remediation Task Context Template
 
 ```markdown
 ## Agent Task: Remediate — {Phase Name} (attempt {M})
@@ -207,7 +300,7 @@ If attempt count reaches 2 and re-validation still fails:
 
 ## Progress Reporting
 
-### After Each Yak Completes
+### After Each Task Completes
 
 Report the completion and overall epic progress:
 
@@ -220,7 +313,31 @@ Report the completion and overall epic progress:
 
 ### Periodic Summary
 
-Use `yx list` to show full epic status:
+Fetch the full task list using the tracker list command and show the full epic status:
+
+#### YAKS
+
+```bash
+yx list
+```
+
+#### BEADS
+
+```
+Skill: beads:list --epic "{id}"
+```
+
+#### NATIVE
+
+```
+TaskList
+```
+
+Parse the titles to reconstruct phase/task hierarchy and report status.
+
+---
+
+Render the summary in this format regardless of tracker:
 
 ```markdown
 **Progress Update:**
@@ -244,7 +361,7 @@ Use `yx list` to show full epic status:
 
 If tests pass immediately (before implementation):
 1. **STOP** — the test is not testing new behavior
-2. **Do NOT mark the yak as done** — leave it
+2. **Do NOT mark the task as done** — leave it
 3. **Report to user** — explain that tests pass without implementation
 4. **Do NOT dispatch Agent 2** — the phase is broken
 
@@ -255,26 +372,50 @@ If a phase cannot be completed after remediation:
 2. **Ask for guidance** — should we adjust the approach?
 3. **Don't skip ahead** — the naming convention prevents this (lower numbers must complete first)
 
-### If Yaks State is Inconsistent
+### If Tracker State is Inconsistent
 
 If readiness computation returns no tasks but non-done tasks remain:
-1. Check `yx list --format json` for the full tree
+1. Fetch the full task tree (tracker list command with JSON/verbose output)
 2. Look for phase groups where all children are done but the parent isn't
-3. Mark completed parents as done: `yx done "{parent name}"`
+3. Mark completed parents as done using the tracker's close/done command
 4. Report to user with details
 
 ---
 
 ## Session Recovery
 
-Recovery requires no special logic:
+### YAKS
+
+No special recovery logic needed:
 
 1. User runs `/craft` in a new session
 2. Identify the epic (user provides name or check `yx list`)
 3. Compute readiness from `yx list --format json` — returns exactly the next dispatchable tasks
 4. Resume the orchestration loop from Step 2
 
-Done yaks represent completed work (files already on disk). The orchestration loop picks up seamlessly.
+Done tasks represent completed work (files already on disk). The orchestration loop picks up seamlessly.
+
+### BEADS
+
+Trivial — bead state persists across sessions:
+
+1. User runs `/craft` in a new session
+2. Identify the epic (user provides name or check `Skill: beads:list`)
+3. Call `Skill: beads:ready` to get the next dispatchable tasks
+4. Resume the orchestration loop from Step 2
+
+### NATIVE
+
+Native tasks are session-scoped — they do not persist across Claude Code sessions. If the session ends, progress is lost.
+
+On recovery:
+
+1. User runs `/craft` in a new session
+2. Read the session artifact from `.crafter/sessions/` (or the plan file) to reconstruct context
+3. Recreate the task list with `TaskCreate` for remaining incomplete work
+4. Resume the orchestration loop from Step 2
+
+The session artifact's Execution Log section shows which tasks were completed, allowing accurate reconstruction of remaining work.
 
 ---
 
@@ -290,17 +431,17 @@ Done yaks represent completed work (files already on disk). The orchestration lo
 - [ ] Implementation written by Agent 2 guided only by test expectations
 - [ ] Uses existing patterns from project CLAUDE.md
 - [ ] Minimal code to pass tests
-- [ ] Respects architectural constraints from yak context
+- [ ] Respects architectural constraints from task context
 
 ### Phase Verification
 - [ ] Each phase validated by Agent 3 before proceeding
 - [ ] Full test suite passes (not just new tests)
 - [ ] Remediation attempts tracked (max 2 per phase)
-- [ ] Yaks marked done only after gates pass
+- [ ] Tasks marked done only after gates pass
 
 ## Final Verification Template
 
-Use this template after all yaks in the epic are done:
+Use this template after all tasks in the epic are done:
 
 ```markdown
 ## Final Verification
@@ -334,7 +475,7 @@ From epic:
 
 ## Implementation Complete
 
-All yaks done:
+All tasks done:
 - All tests passing
 - All acceptance criteria met
 - No test skips

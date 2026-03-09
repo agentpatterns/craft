@@ -128,15 +128,45 @@ functional:
     notes: "Self-containment is critical for craft's isolated agent dispatch. Tasks referencing the plan file are a known failure mode"
 
   - id: draft-05
-    description: Falls back to inline task graph when yaks is unavailable
+    description: Attempts tracker fallback chain when yaks is unavailable (beads then native tasks)
+    grading: llm-judge
+    given: |
+      A project where yaks is NOT available (yx list returns a command-not-found error).
+      No .beads/config.yaml exists. No native task tool is configured.
+    when: "plan the implementation of user profile photo uploads"
+    then:
+      - "Skill detects yaks is unavailable and does not attempt further yx commands"
+      - "Skill attempts beads detection (checks for .beads/config.yaml) before falling back further"
+      - "Skill attempts native task tool (TaskCreate) before falling back to inline task graph"
+      - "Skill falls back to inline task graph only after both beads and native tasks are unavailable"
+      - "Plan file contains section: ## Inline Task Graph as the final fallback"
+    notes: "Verifies the full three-tier fallback chain: yaks → beads → native tasks → inline graph"
+
+  - id: draft-06
+    description: Falls back to beads when yaks is unavailable but beads is initialized
+    grading: llm-judge
+    given: |
+      A project where yaks is NOT available (yx list returns a command-not-found error).
+      A .beads/config.yaml file exists (beads is initialized).
+    when: "plan the implementation of user profile photo uploads"
+    then:
+      - "Skill detects yaks is unavailable and stops issuing yx commands"
+      - "Skill detects .beads/config.yaml and uses beads as the tracker"
+      - "beads:epic command is used to create an epic for the feature"
+      - "beads:create command is used to create tasks for each phase"
+      - "No yx commands are issued after the yaks availability check fails"
+    notes: "Exercises the second tier of the fallback chain: yaks unavailable, beads available"
+
+  - id: draft-07
+    description: Falls back to native tasks when neither yaks nor beads is available
     grading: code
     given: |
       A project where yaks is NOT available (yx list returns a command-not-found error).
+      No .beads/config.yaml exists (beads not initialized).
     when: "plan the implementation of user profile photo uploads"
     then:
-      - "Plan file contains section: ## Inline Task Graph"
-      - "Inline task graph lists each agent step as a headed subsection (e.g., ### P1: ...)"
-      - "Each inline step includes the full Agent Context block"
-      - "Each inline step includes blocked-by dependency notation"
-      - "No attempt to create yaks after yaks availability check fails"
-    notes: "The fallback path is exercised only when yx list fails — test in an environment without the yaks CLI"
+      - "TaskCreate tool is called at least once to build the task graph"
+      - "Task titles encode the agent type (e.g., Write Tests, Implement, Validate)"
+      - "No yx commands are issued"
+      - "No beads commands are issued"
+    notes: "Exercises the third tier of the fallback chain: yaks and beads both unavailable, native TaskCreate used"

@@ -65,3 +65,44 @@
 - Deterministic checks: 217 total, 200 pass, 17 pre-existing skill issues detected
 - Stale references: 0 in operational docs
 - All acceptance criteria: MET
+
+---
+
+# Session 3: Tracker Fallback Chain + Artifact Directory Migration
+
+**Epic:** tracker-fallback-chain-artifact-directory-migration-01kn
+**Started:** 2026-03-09
+
+[DISPATCHED] P1-Artifact-Directory-Migration — agent type: no-test, mode: sync
+[GATE PASS] P1-Artifact-Directory-Migration — ACCEPTANCE gate passed
+[CLOSED] P1-Artifact-Directory-Migration
+[DISPATCHED] P2-Rename-Expand-Decomposition-Reference — agent type: no-test, mode: sync
+[GATE PASS] P2-Rename-Expand-Decomposition-Reference — ACCEPTANCE gate passed
+[CLOSED] P2-Rename-Expand-Decomposition-Reference
+[DISPATCHED] P3-Update-Draft-SKILL — agent type: no-test, mode: sync
+[GATE PASS] P3-Update-Draft-SKILL — ACCEPTANCE gate passed
+[CLOSED] P3-Update-Draft-SKILL
+[DISPATCHED] P4-Update-Craft-SKILL — agent type: no-test, mode: sync
+[GATE PASS] P4-Update-Craft-SKILL — ACCEPTANCE gate passed
+[CLOSED] P4-Update-Craft-SKILL
+[DISPATCHED] P5-Update-Workflow-Detail — agent type: no-test, mode: sync
+[GATE PASS] P5-Update-Workflow-Detail — ACCEPTANCE gate passed
+[CLOSED] P5-Update-Workflow-Detail
+[DISPATCHED] P6-Fix-Stale-References — agent type: no-test, mode: sync
+[GATE PASS] P6-Fix-Stale-References — ACCEPTANCE gate passed
+[CLOSED] P6-Fix-Stale-References
+[DISPATCHED] P7-Update-Test-Scenarios-Evals — agent type: no-test, mode: sync
+[GATE PASS] P7-Update-Test-Scenarios-Evals — ACCEPTANCE gate passed
+[CLOSED] P7-Update-Test-Scenarios-Evals
+[DISPATCHED] P8-Update-Plan-Template — agent type: no-test, mode: sync
+[GATE PASS] P8-Update-Plan-Template — ACCEPTANCE gate passed
+[CLOSED] P8-Update-Plan-Template
+
+## Final Verification
+- Epic: tracker-fallback-chain-artifact-directory-migration-01kn — 8/8 children done (100%)
+- Stale `.claude/scratch` references: 0
+- Stale `.claude/sessions` references: 0
+- Stale "Beads-driven" references: 0
+- Stale "Beads fallback" references: 0
+- File rename: task-graph-decomposition.md exists, yaks-decomposition.md deleted
+- All acceptance criteria: MET

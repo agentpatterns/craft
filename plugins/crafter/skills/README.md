@@ -6,9 +6,9 @@ Skills for day-to-day software development best practices.
 
 The primary workflow aligns with Claude Code's native plan mode:
 
-1. **Research** (outside plan mode) — Explore codebase + web, write temporary artifact to `.claude/scratch/`
+1. **Research** (outside plan mode) — Explore codebase + web, write temporary artifact to `.crafter/scratch/`
 2. **Plan** (inside plan mode) — Draft behavior activates, produces plan with Agent Context blocks
-3. **Execute** (`/craft`) — Beads-driven orchestration with three-agent TDD isolation
+3. **Execute** (`/craft`) — Task-tracker-driven orchestration with three-agent TDD isolation
 4. **Reflect** (`/reflect`) — Post-session learning loop
 
 ## All Skills

@@ -30,7 +30,7 @@ Grading rubric for Category A skills. All checks are automatable via filesystem 
 | Plan path | `file-exists` | `docs/plans/\d{4}-\d{2}-\d{2}-[a-z0-9-]+-plan.md` |
 | Sections | `section-present` | `^## Goal`, `^## Acceptance Criteria`, `^## Files to Create`, `^## Files to Modify`, `^## Implementation Phases`, `^## Constraints`, `^## Out of Scope` |
 | Agent Context blocks | `string-match` | `^#### Agent Context` present; each block contains `Files to`, `Test spec`, `Test command`, `RED gate`, `GREEN gate`, `Architectural constraints` |
-| Beads fallback | `section-present` | `^## Inline Task Graph` (only when yaks unavailable) |
+| Tracker fallback | `section-present` | `^## Inline Task Graph` (only when task tracker unavailable) |
 | Line count | `quantitative` | `150 <= line_count <= 250` |
 
 ## craft

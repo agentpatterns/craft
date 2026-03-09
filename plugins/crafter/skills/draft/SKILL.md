@@ -21,14 +21,14 @@ Use this skill after research (or standalone) to create a compact implementation
 
 ## Phase Contract
 
-**Receives:** Research artifact at `.claude/scratch/{topic}-research.md` (or inline feature description if no research phase was run)
-**Produces:** Plan in the Claude Code session plan file + yaks task graph (created after plan approval)
-**Hands off to:** `/craft` — consumes the yaks task graph, NOT the plan file
+**Receives:** Research artifact at `.crafter/scratch/{topic}-research.md` (or inline feature description if no research phase was run)
+**Produces:** Plan in the Claude Code session plan file + task graph (yaks, beads, or native tasks) created after plan approval
+**Hands off to:** `/craft` — consumes the task graph, NOT the plan file
 
 ## Purpose
 
 The Plan phase creates a compact spec that fits in context by:
-- Summarizing research findings inline (consuming the `.claude/scratch/` artifact)
+- Summarizing research findings inline (consuming the `.crafter/scratch/` artifact)
 - Defining files to create/modify in order of operations
 - Specifying test specs as behavioral descriptions at architectural boundaries
 - Including Agent Context blocks so `/craft` can dispatch isolated agents per phase
@@ -40,7 +40,7 @@ The Plan phase creates a compact spec that fits in context by:
 ## When to Use
 
 Use this skill when:
-- Inside plan mode after completing research (has research artifact in `.claude/scratch/`)
+- Inside plan mode after completing research (has research artifact in `.crafter/scratch/`)
 - Starting a non-trivial feature (no research artifact, will explore inline)
 - Need a clear implementation roadmap before coding
 - Want to specify test boundaries before implementing
@@ -56,7 +56,7 @@ Use this skill when:
 
 Check for research artifact:
 ```
-Glob: .claude/scratch/*-research.md
+Glob: .crafter/scratch/*-research.md
 ```
 
 If research artifact exists, read it and summarize findings inline in the plan. The plan should be self-contained — a reader should not need to go back to the research artifact.
@@ -78,6 +78,7 @@ Ask the user to clarify if needed:
 Write the plan to the Claude Code session plan file. This is the plan mode's native output — the user sees it for approval before exiting plan mode.
 
 **Required sections:**
+- **Metadata** — Include `tracker: yaks|beads|native` to record which tracker will be used
 - **Context** — Why this change is being made, summarizing research findings
 - **Goal** — 1-2 sentence description of what we're building and why
 - **Acceptance Criteria** — Testable outcomes as checklist
@@ -112,21 +113,15 @@ Check plannotator availability: `Bash: plannotator --version`
 
 **If unavailable:** Present a brief summary (goal, phases, acceptance criteria) via `AskUserQuestion`. Iterate until approved.
 
-### 5. Exit Plan Mode and Create Yaks Task Graph
+### 5. Exit Plan Mode and Create Task Graph
 
-Once the plan is approved, call `ExitPlanMode`. Then immediately create the yaks task graph — this is the **commitment point** where the approved plan becomes executable.
+Once the plan is approved, call `ExitPlanMode`. Then immediately create the task graph — this is the **commitment point** where the approved plan becomes executable.
 
-See [yaks-decomposition.md](references/yaks-decomposition.md) for the full procedure including:
-
-- Yaks availability check (with inline task graph fallback)
-- Epic and phase group creation procedure
-- Naming conventions for ordering
-- Agent context piping
-- Example decomposition for a 6-phase feature
+See [task-graph-decomposition.md](references/task-graph-decomposition.md) for the full procedure including three-tier tracker detection (yaks, beads, or native tasks), epic and phase group creation, naming conventions, agent context piping, and an example decomposition for a 6-phase feature.
 
 Report the result:
 ```
-Yaks epic created: {epic name}
+Task graph created ({tracker} mode): {epic/graph name}
 Tasks: {N} ({M} TDD triplets, {K} no-test phases)
 Ready to execute with /craft.
 ```
@@ -136,18 +131,18 @@ Ready to execute with /craft.
 Use `AskUserQuestion` to present:
 
 ```
-Plan approved. Yaks epic: {epic name} ({N} tasks)
+Plan approved. Task graph: {name} ({N} tasks, {tracker} mode)
 
 What would you like to do?
 
 1. Run /craft — execute the plan now
-2. Inspect yaks graph — review tasks before executing
-3. Request changes — describe what to adjust (I'll update yaks)
+2. Inspect task graph — review tasks before executing
+3. Request changes — describe what to adjust (I'll update the graph)
 ```
 
 - **Option 1:** STOP. The user will run `/craft`.
-- **Option 2:** Run `yx list` to show the epic's tasks, then re-present options.
-- **Option 3:** Update yaks, then re-present options.
+- **Option 2:** Show the task graph (e.g., `yx list` for yaks), then re-present options.
+- **Option 3:** Update the task graph, then re-present options.
 
 ## Test Specifications at Boundaries
 
@@ -175,7 +170,7 @@ See [template.md](references/template.md) for detailed guidelines.
 
 ## Agent Context Blocks
 
-Every implementation phase with tests MUST include an `#### Agent Context` subsection. The same Agent Context is stored in each yak's context (for execution). This is the contract between `/draft` and `/craft`.
+Every implementation phase with tests MUST include an `#### Agent Context` subsection. The same Agent Context is stored in each task's context (for execution). This is the contract between `/draft` and `/craft`.
 
 **Required fields:**
 - **Files to create/modify** — explicit paths
@@ -184,7 +179,7 @@ Every implementation phase with tests MUST include an `#### Agent Context` subse
 - **RED gate / GREEN gate** — observable success criteria
 - **Architectural constraints** — boundaries the agent must respect
 
-See [template.md](references/template.md) for the Agent Context block reference and yak context templates.
+See [template.md](references/template.md) for the Agent Context block reference and task context templates.
 
 ## Phase Boundaries
 
@@ -208,8 +203,10 @@ Bad boundaries: "Implement everything", mixing multiple layers
 
 ## Session Recovery
 
-The yaks task graph provides durable state across sessions:
-- **Done yaks** = completed work (agents ran, gates passed, files on disk)
-- **Ready yaks** = next tasks to dispatch (computed from naming convention via `yx list --format json`)
-- **Waiting yaks** = predecessor groups not yet done
+The task graph provides durable state across sessions:
+- **Done tasks** = completed work (agents ran, gates passed, files on disk)
+- **Ready tasks** = next tasks to dispatch (computed from naming convention)
+- **Waiting tasks** = predecessor groups not yet done
 - If a session is interrupted, running `/craft` again picks up exactly where it left off
+- **beads and yaks** = cross-session durable (task graph persists between Claude Code sessions)
+- **native tasks** = session-scoped only (task graph is lost if the session ends)

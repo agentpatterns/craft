@@ -8,8 +8,8 @@ Craft is a Claude Code plugin marketplace that delivers skills (structured markd
 
 - `.claude-plugin/marketplace.json` — Plugin registry declaring one plugin: `crafter` (v2.0.0)
 - `plugins/crafter/skills/` — Skills for the crafter plugin (research, draft, craft, tdd, refactor, reflect, pair, diagram, scaffold, hexagonal-architecture, adr)
-- `.claude/scratch/` — Temporary research artifacts (gitignored)
-- `.claude/sessions/` — Persistent session artifacts (one per completed flow)
+- `.crafter/scratch/` — Temporary research artifacts (gitignored)
+- `.crafter/sessions/` — Persistent session artifacts (one per completed flow)
 
 Each skill is a directory containing `SKILL.md` (with YAML frontmatter for name, description, triggers, allowed-tools) and an optional `references/` subdirectory with supplementary markdown.
 
@@ -46,9 +46,9 @@ See `tests/README.md` for methodology and `tests/evals/README.md` for eval setup
 
 The core workflow aligns with Claude Code's native plan mode:
 
-1. **Research** (outside plan mode) — Claude assesses complexity first. If research is warranted, spawns parallel subagents (Explore + web) and writes a temporary artifact to `.claude/scratch/{topic}-research.md`. Transitions into plan mode when complete — this replaces the old `/clear` context compaction ritual.
+1. **Research** (outside plan mode) — Claude assesses complexity first. If research is warranted, spawns parallel subagents (Explore + web) and writes a temporary artifact to `.crafter/scratch/{topic}-research.md`. Transitions into plan mode when complete — this replaces the old `/clear` context compaction ritual.
 2. **Plan** (inside plan mode) — Draft behavior activates automatically. Reads the research artifact (if exists), summarizes findings inline, and produces a plan with Agent Context blocks per phase. The plan lives in the Claude Code session plan file only during planning.
-3. **Execute** (`/craft`) — First action after plan approval: creates a yaks epic + per-agent-step yaks from the approved plan. Then runs the yaks-driven orchestration loop with three-agent TDD isolation. Final step writes a session artifact to `.claude/sessions/YYYY-MM-DD-{topic}.md` combining research summary, plan, and execution log.
+3. **Execute** (`/craft`) — First action after plan approval: creates a yaks epic + per-agent-step yaks from the approved plan. Then runs the yaks-driven orchestration loop with three-agent TDD isolation. Final step writes a session artifact to `.crafter/sessions/YYYY-MM-DD-{topic}.md` combining research summary, plan, and execution log.
 4. **Post-execution recommendations** — code-review, simplify, reflect
 5. **Reflect** (`/reflect`) — Optional post-session learning loop that mines git history and artifacts to produce improvement proposals for skills, CLAUDE.md, hooks, and templates.
 
@@ -56,15 +56,15 @@ The core workflow aligns with Claude Code's native plan mode:
 
 | Artifact | Location | Lifecycle |
 |----------|----------|-----------|
-| Research artifact | `.claude/scratch/{topic}-research.md` | Temporary — consumed by plan mode, not committed |
+| Research artifact | `.crafter/scratch/{topic}-research.md` | Temporary — consumed by plan mode, not committed |
 | Session plan | Claude Code plan file (ephemeral) | Lives only during plan mode session |
-| Session artifact | `.claude/sessions/YYYY-MM-DD-{topic}.md` | Persistent — one per completed flow |
+| Session artifact | `.crafter/sessions/YYYY-MM-DD-{topic}.md` | Persistent — one per completed flow |
 
 ### Hook Behaviors
 
 | Hook | Event | Purpose |
 |------|-------|---------|
-| PreToolUse on EnterPlanMode | Plan mode entry | Surfaces existing research artifacts from `.claude/scratch/` |
+| PreToolUse on EnterPlanMode | Plan mode entry | Surfaces existing research artifacts from `.crafter/scratch/` |
 
 ### L3/L4 Boundary Testing Philosophy
 

@@ -2,7 +2,7 @@
 
 ## Plan File Role
 
-The plan lives in the Claude Code session plan file during planning. It is NOT read by `/craft` during execution — yak contexts are self-contained. The persistent session artifact (combining research, plan, and execution log) is written by `/craft` to `.claude/sessions/` at the end of execution.
+The plan lives in the Claude Code session plan file during planning. It is NOT read by `/craft` during execution — yak contexts are self-contained. The persistent session artifact (combining research, plan, and execution log) is written by `/craft` to `.crafter/sessions/` at the end of execution.
 
 ## Template Structure
 
@@ -11,6 +11,7 @@ The plan lives in the Claude Code session plan file during planning. It is NOT r
 
 **Date:** YYYY-MM-DD
 **Status:** Plan - Ready for Review
+**Tracker:** yaks|beads|native
 **Yaks Epic:** {epic name}
 
 ## Goal
@@ -229,7 +230,7 @@ Before implementing, verify:
 ## Next Steps
 
 After human review and approval:
-1. Run `/craft` to execute — dispatches agents from yaks task graph
+1. Run `/craft` to execute — dispatches agents from task graph
 2. Each TDD phase: Agent 1 writes failing tests → Agent 2 implements → Agent 3 validates
 3. If interrupted, `/craft` picks up where it left off via readiness computation
 ```
@@ -352,13 +353,15 @@ Each phase should:
 - [ ] Verification steps are concrete and observable
 - [ ] Ready to hand off to `/craft`
 
-### Yaks Integration
-- [ ] Epic yak created with feature name
-- [ ] Each agent step has its own yak with context piped in
-- [ ] Yak contexts are self-contained (no plan file reference needed)
+### Task Graph Integration
+- [ ] Epic/parent task created with feature name
+- [ ] Each agent step has its own task with context piped in
+- [ ] Task contexts are self-contained (no plan file reference needed)
 - [ ] Phase groups named with P{N} prefix for ordering
 - [ ] Children named with NN- prefix for sequential execution
-- [ ] Custom fields set: agent-type (agent-test/agent-impl/agent-validate/no-test)
+- [ ] Agent type specified per step (agent-test/agent-impl/agent-validate/no-test)
+- [ ] (yaks) Custom fields set: agent-type
+- [ ] (yaks) Epic yak created; phase groups and steps as child yaks
 
 ---
 

@@ -319,22 +319,99 @@ tests:
       skill: draft
       grading: llm-judge
 
-  # draft-05: Falls back to inline task graph when yaks is unavailable
-  - description: "[draft-05] Falls back to inline task graph when yaks is unavailable"
+  # draft-05: Attempts tracker fallback chain when yaks is unavailable (beads then native tasks)
+  - description: "[draft-05] Attempts tracker fallback chain when yaks is unavailable"
     vars:
       prompt: |
         GIVEN: A project where yaks is NOT available (yx list returns a tool-not-found error or similar).
+        No .beads/config.yaml exists. No native task tool is configured.
+
+        TASK: plan the implementation of user profile photo uploads
+    assert:
+      - type: llm-rubric
+        value: |
+          You are evaluating whether the draft skill correctly walked the three-tier tracker fallback chain.
+
+          Score each dimension 1-3. Pass threshold: 9 out of 12.
+
+          Dimension 1 — Yaks detection and stop (1-3): Did the skill detect yaks is unavailable and stop issuing yx commands?
+            1 = yx commands were issued after the availability check
+            2 = No yx commands but no evidence of an explicit detection step
+            3 = Skill detected yaks unavailability and issued no further yx commands
+
+          Dimension 2 — Beads detection attempted (1-3): Did the skill check for .beads/config.yaml before moving on?
+            1 = No beads detection attempted
+            2 = Beads mentioned but no explicit check for .beads/config.yaml
+            3 = Skill explicitly checked for .beads/config.yaml as the second fallback tier
+
+          Dimension 3 — Native task tool attempted (1-3): Did the skill attempt TaskCreate before falling back to inline?
+            1 = No attempt to use TaskCreate
+            2 = TaskCreate mentioned but not clearly attempted
+            3 = Skill attempted TaskCreate as the third fallback tier before producing inline graph
+
+          Dimension 4 — Inline graph as final fallback (1-3): Does the plan contain an Inline Task Graph section as the final fallback?
+            1 = No Inline Task Graph section present
+            2 = Inline graph present but fallback ordering is unclear
+            3 = ## Inline Task Graph section is present and is clearly the last resort after all trackers failed
+
+          Return: PASS or FAIL, total score (e.g. "10/12"), one sentence per dimension.
+    metadata:
+      skill: draft
+      grading: llm-judge
+
+  # draft-06: Falls back to beads when yaks is unavailable but beads is initialized
+  - description: "[draft-06] Falls back to beads when yaks unavailable but beads is initialized"
+    vars:
+      prompt: |
+        GIVEN: A project where yaks is NOT available (yx list returns a tool-not-found error or similar).
+        A .beads/config.yaml file exists (beads is initialized).
+
+        TASK: plan the implementation of user profile photo uploads
+    assert:
+      - type: llm-rubric
+        value: |
+          You are evaluating whether the draft skill correctly fell back to beads when yaks was unavailable.
+
+          Score each dimension 1-3. Pass threshold: 9 out of 12.
+
+          Dimension 1 — Yaks detection and stop (1-3): Did the skill detect yaks is unavailable and stop issuing yx commands?
+            1 = yx commands were issued after the availability check
+            2 = No yx commands but no evidence of an explicit detection step
+            3 = Skill detected yaks unavailability and issued no further yx commands
+
+          Dimension 2 — Beads detection (1-3): Did the skill detect .beads/config.yaml and select beads as the tracker?
+            1 = Skill did not detect or use beads
+            2 = Beads mentioned but selection based on config file is unclear
+            3 = Skill detected .beads/config.yaml and explicitly chose beads as the tracker
+
+          Dimension 3 — beads:epic and beads:create used (1-3): Were beads:epic and beads:create commands used?
+            1 = Neither beads:epic nor beads:create was used
+            2 = One of the two commands was used but not both
+            3 = Both beads:epic and beads:create were used to create the epic and tasks
+
+          Dimension 4 — No yx commands after detection (1-3): Were all yx commands absent after the initial detection fails?
+            1 = yx commands appear after the detection failure
+            2 = No yx commands but the boundary is ambiguous
+            3 = No yx commands appear anywhere after the initial availability check
+
+          Return: PASS or FAIL, total score (e.g. "10/12"), one sentence per dimension.
+    metadata:
+      skill: draft
+      grading: llm-judge
+
+  # draft-07: Falls back to native tasks when neither yaks nor beads is available
+  - description: "[draft-07] Falls back to native TaskCreate when neither yaks nor beads available"
+    vars:
+      prompt: |
+        GIVEN: A project where yaks is NOT available (yx list returns a tool-not-found error or similar).
+        No .beads/config.yaml exists (beads not initialized).
 
         TASK: plan the implementation of user profile photo uploads
     assert:
       - type: icontains
-        value: "## Inline Task Graph"
+        value: "TaskCreate"
       - type: regex
-        value: "### P\\d+"
-      - type: icontains
-        value: "#### Agent Context"
-      - type: icontains
-        value: "blocked-by"
+        value: "Write Tests|Implement|Validate"
     metadata:
       skill: draft
       grading: code

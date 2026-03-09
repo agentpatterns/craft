@@ -1,6 +1,6 @@
 ---
 name: craft
-description: Implement phase of RPI methodology. Executes a yaks-driven task graph using isolated agents with strict RED/GREEN/VALIDATE gate enforcement. Use when executing an implementation plan from the draft skill.
+description: Implement phase of RPI methodology. Executes a task-graph-driven implementation using isolated agents with strict RED/GREEN/VALIDATE gate enforcement. Use when executing an implementation plan from the draft skill.
 triggers:
   - "implement the plan"
   - "execute plan"
@@ -13,20 +13,20 @@ allowed-tools: Read Glob Write Bash Task TaskOutput Skill
 
 **RPI Phase 3 of 3:** Research → Plan → **Implement**
 
-Use this skill to execute an implementation plan using yaks-driven orchestration with isolated agents for strict test-first discipline.
+Use this skill to execute an implementation plan using task-graph-driven orchestration with isolated agents for strict test-first discipline.
 
 ## Phase Contract
 
-**Receives:** Yaks task graph (epic yak + per-agent-step child yaks) created by `/draft` — or creates it from the plan file if the yaks graph doesn't exist yet
-**Produces:** Working feature with passing tests + `craft-execution-log.md` execution audit trail + session artifact at `.claude/sessions/`
-**Does NOT read:** The plan file during execution — yak contexts are self-contained
+**Receives:** Task graph (epic + per-agent-step child tasks) created by `/draft` — or creates it from the plan file if the task graph doesn't exist yet
+**Produces:** Working feature with passing tests + `craft-execution-log.md` execution audit trail + session artifact at `.crafter/sessions/`
+**Does NOT read:** The plan file during execution — task contexts are self-contained
 
 ## Purpose
 
-The Implement phase executes a yaks task graph created by `/draft`. Each yak's context contains everything needed for agent dispatch. The naming convention enforces ordering. Readiness is computed from `yx list --format json`.
+The Implement phase executes a task graph created by `/draft`. Each task's context contains everything needed for agent dispatch. The naming convention enforces ordering. Readiness is computed from the task graph state.
 
 Three registered agents per TDD phase (see `plugins/crafter/agents/`):
-- **agent-test** (RED): Creates failing tests from the yak's test spec — knows nothing about the implementation
+- **agent-test** (RED): Creates failing tests from the task's test spec — knows nothing about the implementation
 - **agent-impl** (GREEN): Writes minimal code to make tests pass + YAGNI simplification — guided only by the tests
 - **agent-validate** (VALIDATE): Runs the full test suite — confirms nothing is broken
 
@@ -35,7 +35,7 @@ Plus **agent-remediate** for fixing failures and **agent-no-test** for non-TDD p
 ## When to Use
 
 Use this skill when:
-- Have a complete yaks task graph from `/draft`
+- Have a complete task graph from `/draft`
 - Ready to execute plan phase by phase
 - Want strict test/implementation isolation enforced
 - Resuming an interrupted implementation session
@@ -51,105 +51,113 @@ Use this skill when:
 
 Entry format (one per line, append-only):
 ```
-[DISPATCHED] {yak name} — agent type: {agent-test|agent-impl|agent-validate}, mode: {sync|parallel}
-[GATE PASS] {yak name} — {RED|GREEN|VALIDATE} gate passed
-[GATE FAIL] {yak name} — {RED|GREEN|VALIDATE} gate failed: {reason}
-[CLOSED] {yak name}
-[REMEDIATION] {yak name} — attempt {N}: {description}
-[BLOCKED] {yak name} — escalating to user: {reason}
+[DISPATCHED] {task name} — agent type: {agent-test|agent-impl|agent-validate}, mode: {sync|parallel}
+[GATE PASS] {task name} — {RED|GREEN|VALIDATE} gate passed
+[GATE FAIL] {task name} — {RED|GREEN|VALIDATE} gate failed: {reason}
+[CLOSED] {task name}
+[REMEDIATION] {task name} — attempt {N}: {description}
+[BLOCKED] {task name} — escalating to user: {reason}
 ```
 
-## Yaks Availability
+## Task Tracker Detection
 
-Before starting the orchestration loop, check whether yaks is available by running `yx list --format json`.
+Before starting the orchestration loop, detect which tracker is available:
 
-- **Yaks available:** Follow the standard yaks-driven orchestration loop below.
-- **Yaks unavailable:** Switch to **Inline Execution Mode** — treat the epic context provided inline (in the task prompt or plan file) as if it were returned by `yx context`. Process tasks in the order described in the inline context. Use `craft-execution-log.md` as the sole record of progress. Skip all `yx` commands but follow all other workflow steps identically (agent dispatch, gates, remediation).
+1. Run `yx list --format json` — if it succeeds → **YAKS mode**
+2. Run `ls .beads/config.yaml` — if it exists → **BEADS mode**
+3. Otherwise → **NATIVE mode** (use `TaskCreate`/`TaskList`/`TaskUpdate`)
+
+Each mode follows the same workflow structure. The tracker is an infrastructure detail — agent isolation, TDD gates, and execution log are identical across all three modes.
 
 ## Workflow
 
-### 1. Identify the Epic (or Create Yaks Graph)
+### 1. Identify the Epic (or Create Task Graph)
 
-Find the target epic yak via user input or `yx list --format json`. Verify the epic has child yaks with agent-type fields set.
+**YAKS:** Find the target epic via user input or `yx list --format json`. Verify the epic has child yaks with agent-type fields set. If no epic exists yet, read the plan file and create the yaks task graph now — see the [yaks-decomposition procedure](../draft/references/yaks-decomposition.md).
 
-**If no yaks epic exists yet:** The plan was approved but yaks decomposition hasn't run. Read the plan file (Claude Code session plan or user-provided path) and create the yaks task graph now — epic yak + per-agent-step child yaks with contexts piped in. See the [yaks-decomposition procedure](../draft/references/yaks-decomposition.md). This makes craft resilient whether invoked after draft's yaks creation or directly after plan approval.
+**BEADS:** Use `Skill: beads:list` to find the target epic bead. Verify child beads exist with agent-type fields set. If no epic exists yet, create beads from the plan file using `Skill: beads:create`.
 
-If yaks is unavailable, use the inline epic context provided in the task prompt.
+**NATIVE:** Use `TaskList` to find existing tasks for this session. If no tasks exist yet, create them with `TaskCreate`. Note: native tasks are session-scoped — they do not persist across sessions (see Session Recovery).
 
-If resuming a previous session, this step is the same — the readiness computation skips done yaks automatically.
+If resuming a previous session, this step is the same — the readiness computation skips done tasks automatically.
 
-### 2. Yaks-Driven Orchestration Loop
+### 2. Orchestration Loop
 
-This is the core execution loop. It runs until all yaks in the epic are done or an unrecoverable error occurs.
+This is the core execution loop. It runs until all tasks in the epic are done or an unrecoverable error occurs.
 
 ```
 Loop:
   a. Compute ready tasks (see Readiness Computation below)
-  b. If no ready tasks and non-done tasks remain → something is stuck, escalate to user
-  c. If no ready tasks and all tasks are done → all done, proceed to final verification
+  b. If no ready tasks and non-done tasks remain → escalate to user
+  c. If no ready tasks and all tasks are done → proceed to final verification
   d. For each ready task:
-     - Read yak context via: yx context "{yak name}"
-     - Determine agent type from field: agent-type (agent-test, agent-impl, agent-validate, no-test)
-     - Dispatch Task with agent prompt built from yak context
+     - Read task context (see tracker-specific command below)
+     - Determine agent type from field: agent-type
+     - Dispatch Task with agent prompt built from task context
      - If multiple ready tasks: dispatch in parallel (single message, multiple Task calls)
   e. Wait for agent(s) to complete
   f. For each completed agent:
-     - If gate PASSED → mark done: yx done "{yak name}"
+     - If gate PASSED → mark done (tracker-specific command below)
      - If RED gate FAILED (tests pass immediately) → STOP, report to user
      - If GREEN gate FAILED → proceed to validation anyway
-     - If VALIDATE found failures → create remediation yaks (see Remediation)
+     - If VALIDATE found failures → create remediation tasks (see Remediation)
   g. Loop back to (a)
 ```
+
+**Tracker commands for step (d) read context and step (f) mark done:**
+
+| Action | YAKS | BEADS | NATIVE |
+|--------|------|-------|--------|
+| Read context | `yx context "{name}"` | `Skill: beads:show "{name}"` | `TaskGet {id}` |
+| Mark done | `yx done "{name}"` | `Skill: beads:close "{name}"` | `TaskUpdate {id} completed` |
+| List/progress | `yx list` | `Skill: beads:list` | `TaskList` |
 
 See [workflow-detail.md](references/workflow-detail.md) for agent prompt templates and dispatch details.
 
 ### Readiness Computation
 
-Parse `yx list --format json` for the epic and apply these rules:
+**YAKS and NATIVE:** Parse the task list for the epic and apply these rules:
 
 1. **Extract phase prefix** from each top-level child's name (e.g., `P2` from `P2-Core-Logic`)
 2. **Group by prefix number**: P1 group, P2 group, etc.
 3. **A group is active** when ALL yaks in ALL lower-numbered groups are done
 4. **Within an active group**:
-   - **Leaf yak** (no children): ready if state != `done`
-   - **Parent yak** (has children): first child by name sort with state != `done` is ready
+   - **Leaf task** (no children): ready if state != `done`
+   - **Parent task** (has children): first child by name sort with state != `done` is ready
 5. **Collect all ready tasks** across all active groups → dispatch in parallel
 
-This replaces the external tracker's `ready` command with ~20 lines of in-skill logic, enabling parallel dispatch across independent phase groups while enforcing sequential ordering within TDD triplets.
+**BEADS:** Use `Skill: beads:ready` — it returns the set of ready tasks directly, replacing the in-skill computation above.
+
+This enables parallel dispatch across independent phase groups while enforcing sequential ordering within TDD triplets.
 
 #### Dispatching Agents
 
-For each ready yak, build the agent prompt from its context:
+For each ready task, build the agent prompt from its context:
 
-1. Read the yak context via `yx context "{yak name}"`
+1. Read the task context via the tracker-specific command above
 2. The context contains the full Agent Context — file paths, test specs, commands, gates, constraints
-3. Dispatch via `Task` tool using the registered agent type matching the yak's `agent-type` field (e.g., `subagent_type: crafter:agent-test`)
-4. The agent does NOT need to read the plan file — the yak context is self-contained
+3. Dispatch via `Task` tool using the registered agent type matching the task's `agent-type` field (e.g., `subagent_type: crafter:agent-test`)
+4. The agent does NOT need to read the plan file — the task context is self-contained
 
 #### Parallel Dispatch
 
-When readiness computation returns multiple tasks, dispatch them all in a **single message with multiple `Task` tool calls**. This happens naturally when:
-- Two independent phase groups have the same prefix number (e.g., P2-Feature-A and P2-Feature-B)
-- A no-test phase and a test-write phase are both ready
-
-TDD phases can't parallelize internally (Implement needs Write Test's output on disk), but independent phases parallelize across each other automatically via the naming convention.
+When readiness computation returns multiple tasks, dispatch them all in a **single message with multiple `Task` tool calls**. TDD phases can't parallelize internally (Implement needs Write Test's output on disk), but independent phases parallelize across each other automatically via the naming convention.
 
 #### Remediation
 
 When Agent 3 (Validate) finds failures:
 
-1. Create a remediation yak via `yx add` with `--field "agent-type=agent-remediate"`:
-   - Name: `04-remediate-attempt-{M}` under the same phase group parent
-   - Pipe context: failure output from Agent 3 (see [workflow-detail.md](references/workflow-detail.md) for template)
-2. Create a re-validation yak via `yx add` with `--field "agent-type=agent-validate"`:
-   - Name: `05-revalidate-attempt-{M}` under the same phase group parent
-3. Mark the original validate yak as done (it completed its job — reporting failures)
-4. The sequential naming convention ensures remediation runs before re-validation
-5. If attempt count reaches 2 and re-validation still fails, **STOP — ask the user**
+**YAKS:** Create remediation and re-validation yaks via `yx add` with `--field "agent-type=agent-remediate"` / `--field "agent-type=agent-validate"`. See [workflow-detail.md](references/workflow-detail.md) for the full procedure and context template.
+
+**BEADS:** Create remediation and re-validation beads via `Skill: beads:create` under the same phase group parent.
+
+**NATIVE:** Create remediation and re-validation tasks via `TaskCreate` under the same phase group.
+
+In all modes: name remediation `04-remediate-attempt-{M}` and re-validation `05-revalidate-attempt-{M}`. Mark the original validate task done (it completed its job — reporting failures). If attempt count reaches 2 and re-validation still fails, **STOP — ask the user**.
 
 ### 3. Report Progress
 
-After each yak completes, report status. Use `yx list` to show overall progress:
+After each task completes, report status using the tracker list command:
 ```markdown
 **Progress Update:**
 - [done] P1-Schema-Setup
@@ -157,15 +165,14 @@ After each yak completes, report status. Use `yx list` to show overall progress:
 - [done] P2-Core-Logic / 02-implement
 - [wip]  P2-Core-Logic / 03-validate (dispatched)
 - [todo] P3-Repository-Layer (waiting for P2)
-- [todo] P4-Apply-Discount (waiting for P3)
 ```
 
 ### 4. Final Verification
 
-After all yaks in the epic are done:
+After all tasks in the epic are done:
 1. Run the full test suite one final time
 2. Verify all acceptance criteria from the epic are met
-3. Report the agent execution summary (yaks closed, remediations)
+3. Report the agent execution summary (tasks closed, remediations)
 
 Check plannotator availability: `Bash: plannotator --version`
 
@@ -177,7 +184,7 @@ Check plannotator availability: `Bash: plannotator --version`
 
 ### 5. Write Session Artifact
 
-After final verification passes, write a single session artifact to `.claude/sessions/YYYY-MM-DD-{topic}.md`. This is the ONLY persistent artifact from the entire research → plan → implement flow.
+After final verification passes, write a single session artifact to `.crafter/sessions/YYYY-MM-DD-{topic}.md`. This is the ONLY persistent artifact from the entire research → plan → implement flow.
 
 **Required sections:**
 - **Research Summary** — Key findings from the plan's inline research section (or "No research phase" if skipped)
@@ -193,7 +200,7 @@ Use `AskUserQuestion` to present:
 
 ```
 Implementation complete. All {N} tasks done, tests passing.
-Session artifact: .claude/sessions/YYYY-MM-DD-{topic}.md
+Session artifact: .crafter/sessions/YYYY-MM-DD-{topic}.md
 
 What would you like to do?
 
@@ -220,7 +227,7 @@ What would you like to do?
 If Agent 1's tests pass immediately (before implementation):
 1. STOP — the test is tautological or the feature already exists
 2. Report to user — explain what happened
-3. Do NOT mark the yak as done — leave it for user decision
+3. Do NOT mark the task as done — leave it for user decision
 
 ### VALIDATE Gate Definition
 
@@ -233,11 +240,11 @@ Agent 3 always derives the actual commands from the project rather than using ha
 
 ### Lint Fast Path
 
-If VALIDATE fails **only on the lint command** (tests pass, type-check clean), apply the lint fast path instead of creating remediation yaks:
+If VALIDATE fails **only on the lint command** (tests pass, type-check clean), apply the lint fast path instead of creating remediation tasks:
 
 1. Run the project's lint auto-fix command (e.g., `biome check --write --unsafe`, `ruff check --fix .`)
 2. Re-run the full VALIDATE gate
-3. If gate passes → mark the Validate yak as done and proceed
+3. If gate passes → mark the Validate task as done and proceed
 4. If gate still fails → fall through to standard remediation
 
 This avoids heavyweight remediation for trivially auto-fixable lint issues.
@@ -246,33 +253,31 @@ This avoids heavyweight remediation for trivially auto-fixable lint issues.
 
 If Agent 2 cannot make tests pass:
 1. Proceed to Agent 3 anyway (to get full failure report)
-2. Enter remediation via dynamic yak creation
+2. Enter remediation via dynamic task creation
 3. After 2 failed remediations, STOP and ask user
 
 ## Session Recovery
 
-Recovery is trivial: run `yx list --format json` for the epic and recompute readiness.
+**YAKS:** Run `yx list --format json` for the epic and recompute readiness. Done tasks = completed work; ready tasks = next to dispatch; waiting tasks = predecessors not yet done. No special recovery logic needed.
 
-- **Done yaks** = completed work (agents ran, gates passed, files on disk)
-- **Ready yaks** = next tasks to dispatch (computed from naming convention)
-- **Waiting yaks** = predecessor groups not yet done
+**BEADS:** Same as YAKS — use `Skill: beads:list` and `Skill: beads:ready`. Bead state persists cross-session.
 
-No special recovery logic needed. The yaks state + naming convention IS the execution state.
+**NATIVE:** Native tasks are session-scoped only — they do not persist across Claude Code sessions. On recovery, recreate the task list from the session artifact at `.crafter/sessions/` or the plan file, then resume the orchestration loop.
 
 ## Anti-Patterns to Avoid
 
-- **Don't let agents share context** — each agent starts from the yak context and files on disk
+- **Don't let agents share context** — each agent starts from the task context and files on disk
 - **Don't skip Agent 3** — validation catches regressions in other tests
 - **Don't modify tests during implementation** — tests define the contract
-- **Don't read the plan file during execution** — yak contexts are self-contained
-- **Don't improvise beyond the plan** — stick to the yak tasks or update them explicitly
+- **Don't read the plan file during execution** — task contexts are self-contained
+- **Don't improvise beyond the plan** — stick to the tasks or update them explicitly
 - **Don't run agents in background** — synchronous dispatch ensures ordering
-- **Don't treat a lint-only VALIDATE failure as a full remediation event** — use the lint fast path (auto-fix command from project CLAUDE.md) instead
+- **Don't treat a lint-only VALIDATE failure as a full remediation event** — use the lint fast path
 
 ## After Implementation
 
-Once all yaks done and verified:
-1. **Session artifact written** — `.claude/sessions/YYYY-MM-DD-{topic}.md` is the persistent record
+Once all tasks done and verified:
+1. **Session artifact written** — `.crafter/sessions/YYYY-MM-DD-{topic}.md` is the persistent record
 2. **Post-execution recommendations presented** — code-review, simplify, reflect, commit
 3. **Manual smoke test** — try key user journeys if applicable
 4. **Create commit** — use `/commit` skill
@@ -281,8 +286,8 @@ Once all yaks done and verified:
 ## Context Compaction
 
 **Why isolated agents?** Each agent loads only what it needs:
-- **Agent 1:** Yak's test spec + project test patterns → writes tests
-- **Agent 2:** Test files on disk + yak's constraints → writes implementation
-- **Agent 3:** Test command from yak → runs and reports
+- **Agent 1:** Task's test spec + project test patterns → writes tests
+- **Agent 2:** Test files on disk + task's constraints → writes implementation
+- **Agent 3:** Test command from task → runs and reports
 
-No agent carries the full research or planning context. Each yak context provides exactly the information the dispatched agent needs.
+No agent carries the full research or planning context. Each task context provides exactly the information the dispatched agent needs.
