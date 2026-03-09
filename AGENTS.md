@@ -8,9 +8,9 @@ For project architecture, key concepts (RPI methodology, testing philosophy, hex
 
 The primary workflow aligns with Claude Code's native plan mode:
 
-1. **Research** (outside plan mode) — Assess complexity, dispatch parallel subagents if warranted, write temporary artifact to `.claude/scratch/`
+1. **Research** (outside plan mode) — Assess complexity, dispatch parallel subagents if warranted, write temporary artifact to `.crafter/scratch/`
 2. **Plan** (inside plan mode) — Draft behavior activates, produces plan summarizing research with Agent Context blocks
-3. **Execute** (`/craft`) — Creates yaks task graph from approved plan, runs three-agent TDD orchestration, writes session artifact to `.claude/sessions/`
+3. **Execute** (`/craft`) — Creates task graph from approved plan, runs three-agent TDD orchestration, writes session artifact to `.crafter/sessions/`
 4. **Post-execution** — code-review, simplify, reflect recommendations
 5. **Reflect** (`/reflect`) — Optional post-session learning loop
 
@@ -204,7 +204,13 @@ Watch for these during testing:
 
 ## Issue Tracking
 
-This project uses **yx** (yaks) for issue tracking — a git-native, CRDT-based CLI tool.
+This project supports a three-tier tracker detection chain. The draft and craft skills auto-detect which tracker is available:
+
+1. **yaks** (preferred) — git-native, CRDT-based CLI. Cross-session durable.
+2. **beads** — Claude Code plugin-based tracker. Cross-session durable.
+3. **native tasks** — Claude Code's built-in TaskCreate/TaskList/TaskUpdate. Session-scoped only.
+
+### yaks (primary)
 
 ```bash
 yx list               # Show all yaks (tasks)
@@ -216,6 +222,18 @@ yx sync               # Sync with git remote
 ```
 
 Install: `curl -fsSL https://raw.githubusercontent.com/mattwynne/yaks/main/install.sh | bash`
+
+### beads (fallback)
+
+Used when yaks is unavailable. Requires `beads:init` to initialize. Key commands via Skill tool:
+- `beads:epic` — create epic
+- `beads:create` — create issue with `--label` for agent-type
+- `beads:dep` — set dependencies
+- `beads:ready` — find unblocked tasks
+
+### native tasks (last resort)
+
+Used when neither yaks nor beads is available. Agent-type is encoded in task titles (e.g., `P1-Schema-Setup [no-test]`). Progress is lost when the session ends.
 
 ## Session Completion
 
