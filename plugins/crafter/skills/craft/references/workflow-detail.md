@@ -68,7 +68,7 @@ See `plugins/crafter/agents/` for the full agent definitions:
 - `agent-test.md` — RED gate: writes failing tests only
 - `agent-impl.md` — GREEN gate: minimal implementation + YAGNI simplification pass
 - `agent-validate.md` — VALIDATE gate: runs full suite, reports only, never fixes
-- `agent-no-test.md` — Non-TDD tasks (schema, config, infrastructure)
+- `agent-no-test.md` — Non-TDD tasks (schema, config, infrastructure). After completing the task, the agent should verify that any markdown links in modified files point to existing files.
 - `agent-remediate.md` — Fixes implementation after validation failures (uses opus)
 
 ---
