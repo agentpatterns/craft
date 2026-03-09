@@ -202,6 +202,16 @@ Watch for these during testing:
 - [ ] Tested with target models (Haiku, Sonnet, Opus)
 - [ ] Tested with real usage scenarios (not just test scenarios)
 
+## External Tools
+
+### plannotator
+
+Browser-based code review and annotation UI used by the craft and draft skills. The craft skill runs `plannotator review` after final verification to open a diff review in the browser. Returns "LGTM" or feedback items.
+
+Install: `npm install -g plannotator`
+
+Optional — skills gracefully skip plannotator steps when it's not installed.
+
 ## Issue Tracking
 
 This project supports a three-tier tracker detection chain. The draft and craft skills auto-detect which tracker is available:
