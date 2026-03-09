@@ -1,8 +1,36 @@
-# Agent Instructions
+# CLAUDE.md
+
+This file provides guidance to Claude Code when working with this repository.
 
 This project is a Claude Code plugin marketplace containing **skills** — structured markdown workflow documents. There is no application code or build system. Skills are validated by a three-layer test pipeline (see Testing Skills below).
 
 For project architecture, key concepts (RPI methodology, testing philosophy, hexagonal architecture), artifact lifecycle, and installation commands, see `docs/architecture.md`.
+
+## Skill Authoring Guidelines
+
+- A skill's `SKILL.md` MUST be under 300 lines of markdown. Keep the main file focused on the core workflow and decision logic.
+- Supporting content (examples, reference tables, deep-dive explanations, templates) SHOULD go in the skill's `references/` subdirectory as separate markdown files, linked from the main `SKILL.md`.
+- Each skill is a directory containing `SKILL.md` and an optional `references/` subdirectory.
+
+### Frontmatter Format
+
+Every `SKILL.md` MUST begin with YAML frontmatter in this format:
+
+```yaml
+---
+name: skill-name
+description: One-sentence description of what the skill does and when to use it.
+triggers:
+  - "specific trigger phrase"
+  - "another trigger phrase"
+allowed-tools: Read Glob Write
+---
+```
+
+- `name` — Kebab-case identifier matching the skill directory name.
+- `description` — Concise summary shown in plugin listings.
+- `triggers` — List of phrases that activate the skill. Use specific multi-word phrases; avoid bare single-word triggers that risk false activation.
+- `allowed-tools` — Space-separated list of Claude Code tools the skill may use.
 
 ## Core Workflow (Plan Mode Native)
 
@@ -18,11 +46,7 @@ The primary workflow aligns with Claude Code's native plan mode:
 
 Use the Anthropic `/skill-creator` skill to guide you through creating new skills. It provides an interactive workflow for designing effective skill documents.
 
-Before creating a skill, review these project conventions in `CLAUDE.md`:
-
-- **Skill Authoring Guidelines** — 300-line limit, `references/` subdirectory for supporting content
-- **Frontmatter Format** — Required YAML frontmatter (`name`, `description`, `triggers`, `allowed-tools`)
-- **Subtype Dispatch Pattern** — How to handle skills with multiple related use cases
+Before creating a skill, review the Skill Authoring Guidelines and Frontmatter Format sections above.
 
 ### Where Skills Live
 
@@ -72,7 +96,7 @@ Claude receives the fully-rendered prompt with actual data.
 **Core principle: concise is key.** The context window is shared. Only add context Claude doesn't already have.
 
 - Challenge each paragraph: "Does Claude need this explanation?"
-- See CLAUDE.md Skill Authoring Guidelines for the 300-line rule and `references/` pattern.
+- See the Skill Authoring Guidelines section above for the 300-line rule and `references/` pattern.
 - Keep references one level deep from `SKILL.md` — deeply nested references cause partial reads.
 
 **Match specificity to task fragility (degrees of freedom):**
@@ -175,7 +199,7 @@ Watch for these during testing:
 
 ## Pre-Ship Checklist
 
-### Structure (per CLAUDE.md Frontmatter Format)
+### Structure (per Frontmatter Format above)
 - [ ] Directory name matches frontmatter `name` (kebab-case)
 - [ ] `SKILL.md` has valid YAML frontmatter with `---` delimiters
 - [ ] `name`: kebab-case, max 64 chars, no spaces/capitals
