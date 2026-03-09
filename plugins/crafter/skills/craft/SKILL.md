@@ -73,7 +73,7 @@ Each mode follows the same workflow structure. The tracker is an infrastructure 
 
 ### 1. Identify the Epic (or Create Task Graph)
 
-**YAKS:** Find the target epic via user input or `yx list --format json`. Verify the epic has child yaks with agent-type fields set. If no epic exists yet, read the plan file and create the yaks task graph now — see the [yaks-decomposition procedure](../draft/references/yaks-decomposition.md).
+**YAKS:** Find the target epic via user input or `yx list --format json`. Verify the epic has child yaks with agent-type fields set. If no epic exists yet, read the plan file and create the yaks task graph now — see the [task-graph-decomposition procedure](../draft/references/task-graph-decomposition.md).
 
 **BEADS:** Use `Skill: beads:list` to find the target epic bead. Verify child beads exist with agent-type fields set. If no epic exists yet, create beads from the plan file using `Skill: beads:create`.
 
